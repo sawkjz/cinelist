@@ -1,51 +1,23 @@
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { api, Titulo } from '../../lib/api'
+import { Dialog } from '../ui/Dialog'
+import { Button } from '../ui/Button'
 
-interface DeleteDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  itemName: string;
-  onConfirm: () => void;
-  isDeleting: boolean;
-}
-
-export const DeleteDialog = ({
-  open,
-  onOpenChange,
-  itemName,
-  onConfirm,
-  isDeleting,
-}: DeleteDialogProps) => {
+export default function DeleteDialog({ value, onClose, onDeleted }: {
+  value: Titulo
+  onClose: () => void
+  onDeleted: () => void
+}) {
+  const del = async () => {
+    await api.delete(`/titulos/${value.id}`)
+    onDeleted()
+  }
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-          <AlertDialogDescription>
-            Tem certeza que deseja excluir <strong>{itemName}</strong>?
-            <br />
-            Esta ação não pode ser desfeita.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={onConfirm}
-            disabled={isDeleting}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          >
-            {isDeleting ? "Excluindo..." : "Excluir"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-};
+    <Dialog open={true} title="Excluir título" onClose={onClose}>
+      <p>Tem certeza que deseja excluir "{value.nome}"?</p>
+      <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+        <Button variant="secondary" onClick={onClose}>Cancelar</Button>
+        <Button onClick={del}>Excluir</Button>
+      </div>
+    </Dialog>
+  )
+}
