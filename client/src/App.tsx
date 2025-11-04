@@ -1,24 +1,50 @@
-import { Routes, Route, Link } from 'react-router-dom'
-import Index from './pages/Index'
-import Titulos from './pages/Titulos'
-import NotFound from './pages/NotFound'
+import { BrowserRouter as Router } from 'react-router-dom'
+import { LoginPage } from './modules/login'
+import { TitulosPage } from './modules/titulos'
+import { authService } from './modules/login'
+import { useState, useEffect } from 'react'
+
+type Page = 'login' | 'titulos'
 
 export default function App() {
-  return (
-    <div className="container">
-      <header style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-        <h1>Projeto Filmes</h1>
-        <nav style={{display:'flex',gap:12}}>
-          <Link to="/">Home</Link>
-          <Link to="/titulos">Títulos</Link>
-        </nav>
-      </header>
+  const [currentPage, setCurrentPage] = useState<Page>('login')
 
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/titulos" element={<Titulos />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </div>
+  useEffect(() => {
+    // Verificar se já existe token salvo
+    const token = authService.getToken()
+    if (token) {
+      setCurrentPage('titulos')
+    }
+  }, [])
+
+  const handleLoginSuccess = () => {
+    setCurrentPage('titulos')
+  }
+
+  const handleLogout = () => {
+    authService.logout()
+    setCurrentPage('login')
+  }
+
+  return (
+    <Router>
+      <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6' }}>
+        {currentPage === 'login' && (
+          <LoginPage onLoginSuccess={handleLoginSuccess} />
+        )}
+        
+        {currentPage === 'titulos' && (
+          <div>
+            <header style={{ padding: '10px', borderBottom: '1px solid #ccc', marginBottom: '20px' }}>
+              <button onClick={handleLogout} style={{ float: 'right', padding: '5px 15px', cursor: 'pointer' }}>
+                Sair
+              </button>
+              <h1>Sistema de Títulos</h1>
+            </header>
+            <TitulosPage />
+          </div>
+        )}
+      </div>
+    </Router>
   )
 }

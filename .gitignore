@@ -1,0 +1,24 @@
+# Node
+client/node_modules/
+client/dist/
+client/.vite/
+
+# Java/Maven
+server/target/
+server/.mvn/
+server/mvnw
+server/mvnw.cmd
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
