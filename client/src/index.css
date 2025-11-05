@@ -1,5 +1,60 @@
-:root { font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif; color-scheme: light dark; }
-* { box-sizing: border-box; }
-body { margin: 0; padding: 0; }
-.container { max-width: 960px; margin: 24px auto; padding: 0 16px; }
-.grid { display: grid; gap: 12px; }
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 315 77% 8%;
+    --foreground: 48 94% 95%;
+
+    --card: 315 70% 12%;
+    --card-foreground: 48 94% 95%;
+
+    --popover: 315 75% 10%;
+    --popover-foreground: 48 94% 95%;
+
+    --primary: 315 77% 13%;
+    --primary-foreground: 48 94% 95%;
+
+    --secondary: 315 50% 18%;
+    --secondary-foreground: 48 94% 95%;
+
+    --muted: 315 40% 20%;
+    --muted-foreground: 48 30% 70%;
+
+    --accent: 48 94% 67%;
+    --accent-foreground: 315 77% 13%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 48 94% 95%;
+
+    --border: 315 40% 25%;
+    --input: 315 40% 25%;
+    --ring: 48 94% 67%;
+
+    --radius: 0.75rem;
+
+    --gradient-primary: linear-gradient(135deg, hsl(315 77% 13%) 0%, hsl(315 60% 20%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(48 94% 67%) 0%, hsl(48 94% 75%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(315 70% 12%) 0%, hsl(315 70% 10%) 100%);
+    
+    --shadow-glow: 0 0 30px hsl(48 94% 67% / 0.3);
+    --shadow-card: 0 8px 32px hsl(315 77% 5% / 0.5);
+    
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}

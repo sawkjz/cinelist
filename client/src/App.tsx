@@ -1,50 +1,40 @@
-import { BrowserRouter as Router } from 'react-router-dom'
-import { LoginPage } from './modules/login'
-import { TitulosPage } from './modules/titulos'
-import { authService } from './modules/login'
-import { useState, useEffect } from 'react'
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Auth from "./pages/Auth";
+import Dashboard from "./pages/Dashboard";
+import MyList from "./pages/MyList";
+import Profile from "./pages/Profile";
+import Search from "./pages/Search";
+import Collections from "./pages/Collections";
+import Calendar from "./pages/Calendar";
+import NotFound from "./pages/NotFound";
 
-type Page = 'login' | 'titulos'
+const queryClient = new QueryClient();
 
-export default function App() {
-  const [currentPage, setCurrentPage] = useState<Page>('login')
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Navigate to="/auth" replace />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/my-list" element={<MyList />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/search" element={<Search />} />
+          <Route path="/collections" element={<Collections />} />
+          <Route path="/calendar" element={<Calendar />} />
+          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 
-  useEffect(() => {
-    // Verificar se já existe token salvo
-    const token = authService.getToken()
-    if (token) {
-      setCurrentPage('titulos')
-    }
-  }, [])
-
-  const handleLoginSuccess = () => {
-    setCurrentPage('titulos')
-  }
-
-  const handleLogout = () => {
-    authService.logout()
-    setCurrentPage('login')
-  }
-
-  return (
-    <Router>
-      <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6' }}>
-        {currentPage === 'login' && (
-          <LoginPage onLoginSuccess={handleLoginSuccess} />
-        )}
-        
-        {currentPage === 'titulos' && (
-          <div>
-            <header style={{ padding: '10px', borderBottom: '1px solid #ccc', marginBottom: '20px' }}>
-              <button onClick={handleLogout} style={{ float: 'right', padding: '5px 15px', cursor: 'pointer' }}>
-                Sair
-              </button>
-              <h1>Sistema de Títulos</h1>
-            </header>
-            <TitulosPage />
-          </div>
-        )}
-      </div>
-    </Router>
-  )
-}
+export default App;
