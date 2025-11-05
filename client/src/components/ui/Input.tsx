@@ -1,41 +1,22 @@
-import React from 'react';
+import * as React from "react";
 
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
-  error?: string;
-}
+import { cn } from "@/lib/utils";
 
-export const Input: React.FC<InputProps> = ({ label, error, style, ...props }) => {
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '8px 12px',
-    border: `1px solid ${error ? '#dc2626' : '#d1d5db'}`,
-    borderRadius: '6px',
-    fontSize: '14px',
-    outline: 'none',
-    transition: 'border-color 0.2s',
-    ...style,
-  };
+const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
+  ({ className, type, ...props }, ref) => {
+    return (
+      <input
+        type={type}
+        className={cn(
+          "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+          className,
+        )}
+        ref={ref}
+        {...props}
+      />
+    );
+  },
+);
+Input.displayName = "Input";
 
-  const labelStyle: React.CSSProperties = {
-    display: 'block',
-    marginBottom: '6px',
-    fontSize: '14px',
-    fontWeight: '500',
-    color: '#374151',
-  };
-
-  const errorStyle: React.CSSProperties = {
-    color: '#dc2626',
-    fontSize: '12px',
-    marginTop: '4px',
-  };
-
-  return (
-    <div style={{ marginBottom: '16px' }}>
-      {label && <label style={labelStyle}>{label}</label>}
-      <input style={inputStyle} {...props} />
-      {error && <div style={errorStyle}>{error}</div>}
-    </div>
-  );
-};
+export { Input };
