@@ -1,1 +1,3 @@
-/// <reference types="vite/client" />
+VITE_SUPABASE_PROJECT_ID="fkpvbhoaavhkmlkifmwm"
+VITE_SUPABASE_PUBLISHABLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrcHZiaG9hYXZoa21sa2lmbXdtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzNzY5NDEsImV4cCI6MjA3Nzk1Mjk0MX0.K8Bjc_XkJK3NcQ_cVXC36vLtZTx5rqhFulS2TamDoW4"
+VITE_SUPABASE_URL="https://fkpvbhoaavhkmlkifmwm.supabase.co/"
