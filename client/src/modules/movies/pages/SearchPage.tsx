@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import MovieCard from "../components/MovieCard";
 import { Input } from "@/components/ui/input";
@@ -14,17 +14,27 @@ interface Movie {
   genre: string;
 }
 
+// Cache de buscas em memória
+const searchCache = new Map<string, Movie[]>();
+let suggestionsCache: Movie[] | null = null;
+
 const SearchPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [movies, setMovies] = useState<Movie[]>([]);
   const [suggestions, setSuggestions] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(true);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [searched, setSearched] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    // Carregar sugestões em background sem bloquear a UI
-    loadSuggestions();
+    // Carregar sugestões do cache se existir
+    if (suggestionsCache) {
+      setSuggestions(suggestionsCache);
+    } else {
+      setLoadingSuggestions(true);
+      loadSuggestions();
+    }
   }, []);
 
   const loadSuggestions = async () => {
@@ -43,6 +53,7 @@ const SearchPage = () => {
         genre: movie.genre_ids?.slice(0, 2).join(", ") || "N/A"
       }));
       
+      suggestionsCache = formattedMovies; // Salvar no cache
       setSuggestions(formattedMovies);
     } catch (error) {
       console.error("Erro ao buscar sugestões:", error);
@@ -54,12 +65,29 @@ const SearchPage = () => {
   const handleSearch = async () => {
     if (!searchTerm.trim()) return;
 
+    // Cancelar requisição anterior se existir
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Verificar cache primeiro
+    const cacheKey = searchTerm.toLowerCase().trim();
+    if (searchCache.has(cacheKey)) {
+      setMovies(searchCache.get(cacheKey)!);
+      setSearched(true);
+      return;
+    }
+
     setLoading(true);
     setSearched(true);
 
+    // Criar novo AbortController
+    abortControllerRef.current = new AbortController();
+
     try {
       const response = await fetch(
-        `http://localhost:8081/api/filmes/search?query=${encodeURIComponent(searchTerm)}&page=1`
+        `http://localhost:8081/api/filmes/search?query=${encodeURIComponent(searchTerm)}&page=1`,
+        { signal: abortControllerRef.current.signal }
       );
       const data = await response.json();
 
@@ -74,8 +102,13 @@ const SearchPage = () => {
         genre: movie.genre_ids?.slice(0, 2).join(", ") || "N/A",
       }));
 
+      // Salvar no cache
+      searchCache.set(cacheKey, formattedMovies);
       setMovies(formattedMovies);
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        return; // Requisição cancelada, não fazer nada
+      }
       console.error("Erro ao buscar filmes:", error);
     } finally {
       setLoading(false);

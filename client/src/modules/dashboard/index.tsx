@@ -16,13 +16,25 @@ interface Movie {
   genre: string;
 }
 
+// Cache global para os filmes do dashboard
+let dashboardCache: {
+  popular: Movie[];
+  nowPlaying: Movie[];
+  trending: Movie[];
+} | null = null;
+
 const DashboardPage = () => {
-  const [popularMovies, setPopularMovies] = useState<Movie[]>([]);
-  const [nowPlayingMovies, setNowPlayingMovies] = useState<Movie[]>([]);
-  const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [popularMovies, setPopularMovies] = useState<Movie[]>(dashboardCache?.popular || []);
+  const [nowPlayingMovies, setNowPlayingMovies] = useState<Movie[]>(dashboardCache?.nowPlaying || []);
+  const [trendingMovies, setTrendingMovies] = useState<Movie[]>(dashboardCache?.trending || []);
+  const [loading, setLoading] = useState(!dashboardCache);
 
   useEffect(() => {
+    // Se já tem cache, não precisa carregar
+    if (dashboardCache) {
+      return;
+    }
+
     // Sincronizar filmes com Supabase em background (sem bloquear a UI)
     syncMoviesWithSupabase();
     
@@ -44,6 +56,7 @@ const DashboardPage = () => {
   };
 
   const fetchAllMovies = async () => {
+    setLoading(true);
     try {
       const [popularRes, nowPlayingRes, trendingRes] = await Promise.all([
         fetch("http://localhost:8081/api/filmes/popular?page=1"),
@@ -57,9 +70,16 @@ const DashboardPage = () => {
         trendingRes.json()
       ]);
 
-      setPopularMovies(formatMovies(popularData.results || []));
-      setNowPlayingMovies(formatMovies(nowPlayingData.results || []));
-      setTrendingMovies(formatMovies(trendingData.results || []));
+      const popular = formatMovies(popularData.results || []);
+      const nowPlaying = formatMovies(nowPlayingData.results || []);
+      const trending = formatMovies(trendingData.results || []);
+
+      // Salvar no cache global
+      dashboardCache = { popular, nowPlaying, trending };
+
+      setPopularMovies(popular);
+      setNowPlayingMovies(nowPlaying);
+      setTrendingMovies(trending);
     } catch (error) {
       console.error("Erro ao buscar filmes:", error);
     } finally {
