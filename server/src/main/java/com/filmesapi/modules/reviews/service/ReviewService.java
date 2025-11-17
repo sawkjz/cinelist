@@ -26,6 +26,10 @@ public class ReviewService {
 
     @Transactional
     public ReviewResponse createOrUpdateReview(Long usuarioId, ReviewRequest request) {
+        if (usuarioId == null || request.tmdbId == null) {
+            throw new IllegalArgumentException("Usuario ID e TMDB ID são obrigatórios");
+        }
+        
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
@@ -64,11 +68,15 @@ public class ReviewService {
 
     @Transactional
     public void deleteReview(Long reviewId, Long usuarioId) {
+        if (reviewId == null || usuarioId == null) {
+            throw new IllegalArgumentException("Review ID e Usuario ID são obrigatórios");
+        }
+        
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new RuntimeException("Review não encontrada"));
 
         Usuario usuario = review.usuario;
-        if (!usuario.getId().equals(usuarioId)) {
+        if (usuario == null || usuario.getId() == null || !usuario.getId().equals(usuarioId)) {
             throw new RuntimeException("Você não tem permissão para deletar esta review");
         }
 
