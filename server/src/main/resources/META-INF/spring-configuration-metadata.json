@@ -1,0 +1,27 @@
+{
+  "properties": [
+    {
+      "name": "app.cors.allowed-origin",
+      "type": "java.lang.String",
+      "description": "Origem permitida para requisições CORS (Cross-Origin Resource Sharing).",
+      "defaultValue": "http://localhost:5173"
+    },
+    {
+      "name": "tmdb.api.key",
+      "type": "java.lang.String",
+      "description": "Chave de API ou Bearer Token para autenticação com The Movie Database (TMDB) API."
+    },
+    {
+      "name": "tmdb.api.base-url",
+      "type": "java.lang.String",
+      "description": "URL base da API do TMDB.",
+      "defaultValue": "https://api.themoviedb.org/3"
+    },
+    {
+      "name": "tmdb.api.image-base-url",
+      "type": "java.lang.String",
+      "description": "URL base para imagens do TMDB.",
+      "defaultValue": "https://image.tmdb.org/t/p"
+    }
+  ]
+}

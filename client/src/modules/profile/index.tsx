@@ -1,0 +1,291 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import Navbar from "@/components/Navbar";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Trophy, Film, Star, Calendar, Upload, Edit2, Save } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+const Profile = () => {
+  const navigate = useNavigate();
+  const [userEmail, setUserEmail] = useState<string>("");
+  const [userName, setUserName] = useState<string>("");
+  const [userBio, setUserBio] = useState<string>("");
+  const [avatarUrl, setAvatarUrl] = useState<string>("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    loadUserProfile();
+  }, []);
+
+  const loadUserProfile = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      setUserEmail(user.email || "");
+      
+      // Buscar dados do perfil
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (profile) {
+        setUserName(profile.full_name || "");
+        setUserBio(profile.bio || "");
+        setAvatarUrl(profile.avatar_url || "");
+      }
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          full_name: userName,
+          bio: userBio,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
+
+      if (error) throw error;
+
+      toast.success("Perfil atualizado com sucesso!");
+      setIsEditing(false);
+    } catch (error: any) {
+      toast.error("Erro ao atualizar perfil: " + error.message);
+    }
+  };
+
+  const handleUploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      setUploading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      // Upload para o Storage do Supabase
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${user.id}-${Math.random()}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Obter URL pública
+      const { data } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+
+      const newAvatarUrl = data.publicUrl;
+
+      // Atualizar no perfil
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: newAvatarUrl })
+        .eq("id", user.id);
+
+      if (updateError) throw updateError;
+
+      setAvatarUrl(newAvatarUrl);
+      toast.success("Foto atualizada com sucesso!");
+    } catch (error: any) {
+      toast.error("Erro ao fazer upload: " + error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error("Erro ao sair");
+    } else {
+      toast.success("Logout realizado!");
+      navigate("/auth");
+    }
+  };
+
+  const stats = [
+    { icon: Film, label: "Filmes Assistidos", value: "47" },
+    { icon: Star, label: "Avaliações", value: "32" },
+    { icon: Calendar, label: "Dias Assistindo", value: "156" },
+    { icon: Trophy, label: "Conquistas", value: "8" },
+  ];
+
+  const getInitials = () => {
+    if (userName) {
+      return userName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+    }
+    return userEmail ? userEmail[0].toUpperCase() : "U";
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      
+      <main className="container mx-auto px-4 pt-24 pb-12">
+        <Card className="p-8 bg-gradient-card border-border/50 mb-8">
+          <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
+            <div className="relative">
+              <Avatar className="h-32 w-32 border-4 border-accent">
+                {avatarUrl ? (
+                  <AvatarImage src={avatarUrl} alt={userName} />
+                ) : (
+                  <AvatarFallback className="bg-accent text-accent-foreground text-3xl">
+                    {getInitials()}
+                  </AvatarFallback>
+                )}
+              </Avatar>
+              <label htmlFor="avatar-upload">
+                <Button
+                  size="sm"
+                  disabled={uploading}
+                  className="absolute bottom-0 right-0 rounded-full h-10 w-10 p-0 bg-accent text-accent-foreground hover:bg-accent-foreground hover:text-accent"
+                  asChild
+                >
+                  <div className="cursor-pointer">
+                    {uploading ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
+                    ) : (
+                      <Upload className="h-4 w-4" />
+                    )}
+                  </div>
+                </Button>
+              </label>
+              <input
+                id="avatar-upload"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleUploadAvatar}
+                disabled={uploading}
+              />
+            </div>
+            
+            <div className="flex-1 w-full">
+              {!isEditing ? (
+                <>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h1 className="text-3xl font-cinzel font-bold">{userName || "Sem nome"}</h1>
+                      <p className="text-muted-foreground">{userEmail}</p>
+                    </div>
+                    <Button
+                      onClick={() => setIsEditing(true)}
+                      variant="outline"
+                      className="gap-2 hover:bg-foreground hover:text-background"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                      Editar Perfil
+                    </Button>
+                  </div>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {userBio || "Adicione uma biografia para contar mais sobre você e seus gostos cinematográficos!"}
+                  </p>
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="name">Nome</Label>
+                    <Input
+                      id="name"
+                      value={userName}
+                      onChange={(e) => setUserName(e.target.value)}
+                      placeholder="Seu nome"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="bio">Biografia</Label>
+                    <Textarea
+                      id="bio"
+                      value={userBio}
+                      onChange={(e) => setUserBio(e.target.value)}
+                      placeholder="Conte um pouco sobre você e seus filmes favoritos..."
+                      className="min-h-[100px]"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleSaveProfile}
+                      className="bg-accent text-accent-foreground hover:bg-accent-foreground hover:text-accent"
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      Salvar
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setIsEditing(false);
+                        loadUserProfile();
+                      }}
+                      variant="outline"
+                      className="hover:bg-foreground hover:text-background"
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {stats.map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <Card key={index} className="p-6 bg-card border-border/50 text-center">
+                <Icon className="h-8 w-8 text-accent mx-auto mb-2" />
+                <p className="text-2xl font-bold text-foreground mb-1">{stat.value}</p>
+                <p className="text-sm text-muted-foreground">{stat.label}</p>
+              </Card>
+            );
+          })}
+        </div>
+
+        <Card className="p-8 bg-gradient-card border-border/50">
+          <h2 className="text-2xl font-cinzel font-bold mb-6 text-foreground flex items-center gap-2">
+            <Trophy className="h-6 w-6 text-accent" />
+            Desafios
+          </h2>
+          <div className="space-y-4">
+            <div className="p-4 bg-secondary rounded-lg">
+              <h3 className="font-semibold mb-2">Maratona de Clássicos</h3>
+              <p className="text-sm text-muted-foreground mb-2">Assista 10 filmes clássicos este mês</p>
+              <div className="w-full bg-muted rounded-full h-2">
+                <div className="bg-accent h-2 rounded-full" style={{ width: "60%" }} />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">6/10 completo</p>
+            </div>
+            
+            <div className="p-4 bg-secondary rounded-lg">
+              <h3 className="font-semibold mb-2">Crítico Cinéfilo</h3>
+              <p className="text-sm text-muted-foreground mb-2">Escreva 20 reviews detalhadas</p>
+              <div className="w-full bg-muted rounded-full h-2">
+                <div className="bg-accent h-2 rounded-full" style={{ width: "35%" }} />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">7/20 completo</p>
+            </div>
+          </div>
+        </Card>
+      </main>
+    </div>
+  );
+};
+
+export default Profile;

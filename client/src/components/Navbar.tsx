@@ -1,9 +1,21 @@
 import { Link, useLocation } from "react-router-dom";
-import { Film, Search, User, Calendar, BookOpen, Star, Home, List } from "lucide-react";
+import { Film, Search, User, Calendar, BookOpen, Star, Home, List, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuthContext } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const Navbar = () => {
   const location = useLocation();
+  const { signOut } = useAuthContext();
+  
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast.success("Logout realizado com sucesso!");
+    } catch (error) {
+      toast.error("Erro ao fazer logout");
+    }
+  };
   
   const navItems = [
     { path: "/dashboard", label: "Início", icon: Home },
@@ -35,10 +47,10 @@ const Navbar = () => {
                   <Button
                     variant={isActive(item.path) ? "default" : "ghost"}
                     size="sm"
-                    className={`gap-2 ${
+                    className={`gap-2 transition-colors ${
                       isActive(item.path)
                         ? "bg-accent text-accent-foreground hover:bg-accent/90"
-                        : "text-foreground hover:text-accent"
+                        : "text-foreground hover:bg-foreground hover:text-background"
                     }`}
                   >
                     <Icon className="h-4 w-4" />
@@ -50,8 +62,21 @@ const Navbar = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="hover:bg-foreground hover:text-background transition-colors"
+            >
               <Star className="h-5 w-5" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={handleLogout}
+              title="Sair"
+              className="hover:bg-foreground hover:text-background transition-colors"
+            >
+              <LogOut className="h-5 w-5" />
             </Button>
           </div>
         </div>
