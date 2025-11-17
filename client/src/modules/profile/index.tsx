@@ -26,8 +26,8 @@ const Profile = () => {
 
   const loadUserProfile = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      setUserEmail(user.email || "");
+    if (user?.email) {
+      setUserEmail(user.email);
       
       // Buscar dados do perfil
       const { data: profile } = await supabase
