@@ -1,5 +1,5 @@
 import Navbar from "@/components/Navbar";
-import MovieCard from "@/components/MovieCard";
+import MovieCard from "@/modules/movies/components/MovieCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const MyList = () => {
