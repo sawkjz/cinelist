@@ -13,6 +13,8 @@ import Search from "./modules/movies/pages/SearchPage";
 import Collections from "./modules/collections";
 import Calendar from "./modules/calendar";
 import MovieDetails from "./pages/MovieDetails";
+import Categories from "./pages/Categories";
+import Genre from "./pages/Genre";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -80,6 +82,22 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Calendar />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/categories"
+              element={
+                <ProtectedRoute>
+                  <Categories />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/genre/:genreId"
+              element={
+                <ProtectedRoute>
+                  <Genre />
                 </ProtectedRoute>
               }
             />

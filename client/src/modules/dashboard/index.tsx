@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
+import MovieCard from "@/modules/movies/components/MovieCard";
 import HeroSection from "./components/HeroSection";
 import NotificationsSection from "./components/NotificationsSection";
 import TrendingSection from "./components/TrendingSection";
@@ -16,31 +17,46 @@ interface Movie {
 
 const DashboardPage = () => {
   const [popularMovies, setPopularMovies] = useState<Movie[]>([]);
+  const [nowPlayingMovies, setNowPlayingMovies] = useState<Movie[]>([]);
+  const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchPopularMovies();
+    fetchAllMovies();
   }, []);
 
-  const fetchPopularMovies = async () => {
+  const formatMovies = (movies: any[]): Movie[] => {
+    return movies.slice(0, 10).map((movie: any) => ({
+      id: movie.id,
+      title: movie.title,
+      year: movie.release_date?.split("-")[0] || "N/A",
+      rating: movie.vote_average || 0,
+      posterUrl: movie.poster_path 
+        ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
+        : "/placeholder.svg",
+      genre: movie.genre_ids?.slice(0, 2).join(", ") || "N/A"
+    }));
+  };
+
+  const fetchAllMovies = async () => {
     try {
-      const response = await fetch("http://localhost:8081/api/filmes/popular?page=1");
-      const data = await response.json();
-      
-      const formattedMovies: Movie[] = data.results.slice(0, 10).map((movie: any) => ({
-        id: movie.id,
-        title: movie.title,
-        year: movie.release_date?.split("-")[0] || "N/A",
-        rating: movie.vote_average || 0,
-        posterUrl: movie.poster_path 
-          ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-          : "/placeholder.svg",
-        genre: movie.genre_ids?.slice(0, 2).join(", ") || "N/A"
-      }));
-      
-      setPopularMovies(formattedMovies);
+      const [popularRes, nowPlayingRes, trendingRes] = await Promise.all([
+        fetch("http://localhost:8081/api/filmes/popular?page=1"),
+        fetch("http://localhost:8081/api/filmes/now-playing?page=1"),
+        fetch("http://localhost:8081/api/filmes/trending?page=1")
+      ]);
+
+      const [popularData, nowPlayingData, trendingData] = await Promise.all([
+        popularRes.json(),
+        nowPlayingRes.json(),
+        trendingRes.json()
+      ]);
+
+      setPopularMovies(formatMovies(popularData.results || []));
+      setNowPlayingMovies(formatMovies(nowPlayingData.results || []));
+      setTrendingMovies(formatMovies(trendingData.results || []));
     } catch (error) {
-      console.error("Erro ao buscar filmes populares:", error);
+      console.error("Erro ao buscar filmes:", error);
     } finally {
       setLoading(false);
     }
@@ -70,8 +86,43 @@ const DashboardPage = () => {
       <main className="container mx-auto px-4 pt-24 pb-12">
         <HeroSection />
         <NotificationsSection activities={recentActivity} />
-        <TrendingSection movies={popularMovies} />
-        <ContinueWatchingSection movies={popularMovies.slice(0, 4)} />
+        
+        {/* Filmes em Cartaz */}
+        {nowPlayingMovies.length > 0 && (
+          <section className="mb-12">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-cinzel font-bold text-foreground flex items-center gap-2">
+                🎬 Filmes em Cartaz
+              </h2>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {nowPlayingMovies.map((movie) => (
+                <MovieCard key={movie.id} {...movie} />
+              ))}
+            </div>
+          </section>
+        )}
+        
+        {/* Em Alta */}
+        <TrendingSection movies={trendingMovies} />
+        
+        {/* Populares */}
+        {popularMovies.length > 0 && (
+          <section className="mb-12">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-cinzel font-bold text-foreground flex items-center gap-2">
+                ⭐ Populares
+              </h2>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {popularMovies.map((movie) => (
+                <MovieCard key={movie.id} {...movie} />
+              ))}
+            </div>
+          </section>
+        )}
+        
+        <ContinueWatchingSection movies={nowPlayingMovies.slice(0, 4)} />
       </main>
     </div>
   );
