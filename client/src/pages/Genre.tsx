@@ -19,7 +19,7 @@ const GenrePage = () => {
   const navigate = useNavigate();
   const [movies, setMovies] = useState<Movie[]>([]);
   const [genreName, setGenreName] = useState<string>("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
 
   useEffect(() => {

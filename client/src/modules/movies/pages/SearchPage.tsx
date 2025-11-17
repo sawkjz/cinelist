@@ -19,10 +19,11 @@ const SearchPage = () => {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [suggestions, setSuggestions] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(true);
   const [searched, setSearched] = useState(false);
 
   useEffect(() => {
-    // Carregar sugestões iniciais (filmes em alta)
+    // Carregar sugestões em background sem bloquear a UI
     loadSuggestions();
   }, []);
 
@@ -45,6 +46,8 @@ const SearchPage = () => {
       setSuggestions(formattedMovies);
     } catch (error) {
       console.error("Erro ao buscar sugestões:", error);
+    } finally {
+      setLoadingSuggestions(false);
     }
   };
 
@@ -142,7 +145,20 @@ const SearchPage = () => {
           </>
         )}
 
-        {!searched && !loading && suggestions.length > 0 && (
+        {!searched && loadingSuggestions && (
+          <div>
+            <h2 className="text-2xl font-semibold mb-6 text-foreground">
+              Sugestões para você
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {[...Array(10)].map((_, i) => (
+                <div key={i} className="aspect-[2/3] bg-muted animate-pulse rounded-lg" />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!searched && !loadingSuggestions && suggestions.length > 0 && (
           <div>
             <h2 className="text-2xl font-semibold mb-6 text-foreground">
               Sugestões para você
@@ -155,7 +171,7 @@ const SearchPage = () => {
           </div>
         )}
 
-        {!searched && !loading && suggestions.length === 0 && (
+        {!searched && !loadingSuggestions && suggestions.length === 0 && (
           <div className="text-center py-12">
             <SearchIcon className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground text-lg">

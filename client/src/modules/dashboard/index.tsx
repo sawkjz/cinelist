@@ -20,7 +20,7 @@ const DashboardPage = () => {
   const [popularMovies, setPopularMovies] = useState<Movie[]>([]);
   const [nowPlayingMovies, setNowPlayingMovies] = useState<Movie[]>([]);
   const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     // Sincronizar filmes com Supabase em background (sem bloquear a UI)
@@ -90,17 +90,6 @@ const DashboardPage = () => {
     { id: 3, text: "Amigo adicionou 'Parasita'", time: "há 1 dia" },
   ];
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <div className="flex items-center justify-center h-[60vh]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -110,41 +99,49 @@ const DashboardPage = () => {
         <NotificationsSection activities={recentActivity} />
         
         {/* Filmes em Cartaz */}
-        {nowPlayingMovies.length > 0 && (
-          <section className="mb-12">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-cinzel font-bold text-foreground flex items-center gap-2">
-                🎬 Filmes em Cartaz
-              </h2>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {nowPlayingMovies.map((movie) => (
+        <section className="mb-12">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-cinzel font-bold text-foreground flex items-center gap-2">
+              🎬 Filmes em Cartaz
+            </h2>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {loading ? (
+              [...Array(10)].map((_, i) => (
+                <div key={i} className="aspect-[2/3] bg-muted animate-pulse rounded-lg" />
+              ))
+            ) : (
+              nowPlayingMovies.map((movie) => (
                 <MovieCard key={movie.id} {...movie} />
-              ))}
-            </div>
-          </section>
-        )}
+              ))
+            )}
+          </div>
+        </section>
         
         {/* Em Alta */}
         <TrendingSection movies={trendingMovies} />
         
         {/* Populares */}
-        {popularMovies.length > 0 && (
-          <section className="mb-12">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-cinzel font-bold text-foreground flex items-center gap-2">
-                ⭐ Populares
-              </h2>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {popularMovies.map((movie) => (
+        <section className="mb-12">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-cinzel font-bold text-foreground flex items-center gap-2">
+              ⭐ Populares
+            </h2>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {loading ? (
+              [...Array(10)].map((_, i) => (
+                <div key={i} className="aspect-[2/3] bg-muted animate-pulse rounded-lg" />
+              ))
+            ) : (
+              popularMovies.map((movie) => (
                 <MovieCard key={movie.id} {...movie} />
-              ))}
-            </div>
-          </section>
-        )}
+              ))
+            )}
+          </div>
+        </section>
         
-        <ContinueWatchingSection movies={nowPlayingMovies.slice(0, 4)} />
+        <ContinueWatchingSection movies={loading ? [] : nowPlayingMovies.slice(0, 4)} />
       </main>
     </div>
   );
