@@ -5,6 +5,7 @@ import HeroSection from "./components/HeroSection";
 import NotificationsSection from "./components/NotificationsSection";
 import TrendingSection from "./components/TrendingSection";
 import ContinueWatchingSection from "./components/ContinueWatchingSection";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Movie {
   id: number;
@@ -22,6 +23,10 @@ const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Sincronizar filmes com Supabase em background (sem bloquear a UI)
+    syncMoviesWithSupabase();
+    
+    // Buscar filmes da API do Spring Boot para exibição
     fetchAllMovies();
   }, []);
 
@@ -59,6 +64,23 @@ const DashboardPage = () => {
       console.error("Erro ao buscar filmes:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const syncMoviesWithSupabase = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('updateMovies', {
+        body: {}
+      });
+
+      if (error) {
+        console.error("Erro ao sincronizar filmes:", error);
+        return;
+      }
+
+      console.log("✅ Filmes sincronizados com Supabase:", data.message);
+    } catch (error) {
+      console.error("Erro ao sincronizar filmes:", error);
     }
   };
 

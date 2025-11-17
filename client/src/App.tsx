@@ -15,6 +15,7 @@ import Calendar from "./modules/calendar";
 import MovieDetails from "./pages/MovieDetails";
 import Categories from "./pages/Categories";
 import Genre from "./pages/Genre";
+import AllMovies from "./pages/AllMovies";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -98,6 +99,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Genre />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/all-movies"
+              element={
+                <ProtectedRoute>
+                  <AllMovies />
                 </ProtectedRoute>
               }
             />

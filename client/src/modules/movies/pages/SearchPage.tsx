@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import MovieCard from "../components/MovieCard";
 import { Input } from "@/components/ui/input";
@@ -17,8 +17,36 @@ interface Movie {
 const SearchPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [movies, setMovies] = useState<Movie[]>([]);
+  const [suggestions, setSuggestions] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+
+  useEffect(() => {
+    // Carregar sugestões iniciais (filmes em alta)
+    loadSuggestions();
+  }, []);
+
+  const loadSuggestions = async () => {
+    try {
+      const response = await fetch("http://localhost:8081/api/filmes/trending?page=1");
+      const data = await response.json();
+      
+      const formattedMovies: Movie[] = data.results.slice(0, 10).map((movie: any) => ({
+        id: movie.id,
+        title: movie.title,
+        year: movie.release_date?.split("-")[0] || "N/A",
+        rating: movie.vote_average || 0,
+        posterUrl: movie.poster_path 
+          ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
+          : "/placeholder.svg",
+        genre: movie.genre_ids?.slice(0, 2).join(", ") || "N/A"
+      }));
+      
+      setSuggestions(formattedMovies);
+    } catch (error) {
+      console.error("Erro ao buscar sugestões:", error);
+    }
+  };
 
   const handleSearch = async () => {
     if (!searchTerm.trim()) return;
@@ -114,7 +142,20 @@ const SearchPage = () => {
           </>
         )}
 
-        {!searched && !loading && (
+        {!searched && !loading && suggestions.length > 0 && (
+          <div>
+            <h2 className="text-2xl font-semibold mb-6 text-foreground">
+              Sugestões para você
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {suggestions.map((movie) => (
+                <MovieCard key={movie.id} {...movie} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!searched && !loading && suggestions.length === 0 && (
           <div className="text-center py-12">
             <SearchIcon className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground text-lg">

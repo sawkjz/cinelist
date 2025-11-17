@@ -1,5 +1,6 @@
 import { TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 import MovieCard from "@/modules/movies/components/MovieCard";
 
 interface Movie {
@@ -16,6 +17,8 @@ interface TrendingSectionProps {
 }
 
 const TrendingSection = ({ movies }: TrendingSectionProps) => {
+  const navigate = useNavigate();
+
   return (
     <section className="mb-12">
       <div className="flex items-center justify-between mb-6">
@@ -23,7 +26,11 @@ const TrendingSection = ({ movies }: TrendingSectionProps) => {
           <TrendingUp className="h-6 w-6 text-accent" />
           Em Alta Agora
         </h2>
-        <Button variant="ghost" className="text-accent hover:text-accent/80">
+        <Button 
+          variant="ghost" 
+          className="text-accent hover:text-accent/80"
+          onClick={() => navigate("/all-movies")}
+        >
           Ver Tudo
         </Button>
       </div>
