@@ -43,4 +43,25 @@ public class FilmeController {
         return tmdbService.getMovieDetails(tmdbId)
                 .map(ResponseEntity::ok);
     }
+
+    @GetMapping("/now-playing")
+    public Mono<ResponseEntity<String>> getNowPlayingMovies(
+            @RequestParam(defaultValue = "1") int page) {
+        return tmdbService.getNowPlayingMovies(page)
+                .map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/genre/{genreId}")
+    public Mono<ResponseEntity<String>> getMoviesByGenre(
+            @PathVariable int genreId,
+            @RequestParam(defaultValue = "1") int page) {
+        return tmdbService.getMoviesByGenre(genreId, page)
+                .map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/genres")
+    public Mono<ResponseEntity<String>> getGenreList() {
+        return tmdbService.getGenreList()
+                .map(ResponseEntity::ok);
+    }
 }

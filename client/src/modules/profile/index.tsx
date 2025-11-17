@@ -19,28 +19,35 @@ const Profile = () => {
   const [avatarUrl, setAvatarUrl] = useState<string>("");
   const [isEditing, setIsEditing] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadUserProfile();
   }, []);
 
   const loadUserProfile = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user?.email) {
-      setUserEmail(user.email);
-      
-      // Buscar dados do perfil
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        setUserEmail(user.email);
+        
+        // Buscar dados do perfil
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single();
 
-      if (profile) {
-        setUserName(profile.full_name || "");
-        setUserBio(profile.bio || "");
-        setAvatarUrl(profile.avatar_url || "");
+        if (profile) {
+          setUserName(profile.full_name || "");
+          setUserBio(profile.bio || "");
+          setAvatarUrl(profile.avatar_url || "");
+        }
       }
+    } catch (error) {
+      console.error("Erro ao carregar perfil:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -134,6 +141,22 @@ const Profile = () => {
     }
     return userEmail ? userEmail[0].toUpperCase() : "U";
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main className="container mx-auto px-4 pt-24 pb-12">
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Carregando perfil...</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
