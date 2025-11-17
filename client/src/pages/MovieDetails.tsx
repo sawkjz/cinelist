@@ -30,12 +30,16 @@ interface Review {
   dataCriacao: string;
 }
 
+// Cache global para detalhes de filmes
+const movieDetailsCache = new Map<string, MovieDetails>();
+const reviewsCache = new Map<string, Review[]>();
+
 const MovieDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [movie, setMovie] = useState<MovieDetails | null>(null);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [movie, setMovie] = useState<MovieDetails | null>(movieDetailsCache.get(id || "") || null);
+  const [reviews, setReviews] = useState<Review[]>(reviewsCache.get(id || "") || []);
+  const [loading, setLoading] = useState(!movieDetailsCache.has(id || ""));
   const [userRating, setUserRating] = useState(0);
   const [userComment, setUserComment] = useState("");
   const [hoveredStar, setHoveredStar] = useState(0);
@@ -45,8 +49,18 @@ const MovieDetails = () => {
   useEffect(() => {
     loadCurrentUser();
     if (id) {
-      fetchMovieDetails();
-      fetchReviews();
+      // Verifica cache antes de fazer requisições
+      if (movieDetailsCache.has(id)) {
+        setMovie(movieDetailsCache.get(id)!);
+      } else {
+        fetchMovieDetails();
+      }
+      
+      if (reviewsCache.has(id)) {
+        setReviews(reviewsCache.get(id)!);
+      } else {
+        fetchReviews();
+      }
     }
   }, [id]);
 
@@ -81,6 +95,10 @@ const MovieDetails = () => {
       const response = await fetch(`http://localhost:8081/api/filmes/${id}`);
       const data = await response.json();
       setMovie(data);
+      // Salva no cache
+      if (id) {
+        movieDetailsCache.set(id, data);
+      }
     } catch (error) {
       console.error("Erro ao buscar detalhes:", error);
       toast.error("Erro ao carregar detalhes do filme");
@@ -95,6 +113,10 @@ const MovieDetails = () => {
       if (response.ok) {
         const data = await response.json();
         setReviews(data);
+        // Salva no cache
+        if (id) {
+          reviewsCache.set(id, data);
+        }
       }
     } catch (error) {
       console.error("Erro ao buscar reviews:", error);
@@ -138,6 +160,10 @@ const MovieDetails = () => {
         toast.success("Review adicionada com sucesso!");
         setUserRating(0);
         setUserComment("");
+        // Limpa o cache de reviews para forçar atualização
+        if (id) {
+          reviewsCache.delete(id);
+        }
         fetchReviews();
       } else {
         toast.error("Erro ao adicionar review");
@@ -150,10 +176,44 @@ const MovieDetails = () => {
     }
   };
 
+  const imageBaseUrl = "https://image.tmdb.org/t/p";
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
+      <div className="min-h-screen bg-background">
+        {/* Skeleton Backdrop */}
+        <div className="relative h-[400px] w-full overflow-hidden bg-muted animate-pulse" />
+        
+        <div className="container mx-auto px-4 -mt-32 relative z-20">
+          <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Button>
+
+          <div className="grid md:grid-cols-[300px,1fr] gap-8">
+            {/* Skeleton Poster */}
+            <div>
+              <div className="w-full aspect-[2/3] bg-muted animate-pulse rounded-lg" />
+              <div className="w-full h-10 bg-muted animate-pulse rounded mt-4" />
+            </div>
+
+            {/* Skeleton Info */}
+            <div className="space-y-6">
+              <div className="h-10 bg-muted animate-pulse rounded w-3/4" />
+              <div className="h-6 bg-muted animate-pulse rounded w-1/2" />
+              <div className="flex gap-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-8 w-20 bg-muted animate-pulse rounded-full" />
+                ))}
+              </div>
+              <div className="space-y-2">
+                <div className="h-4 bg-muted animate-pulse rounded w-full" />
+                <div className="h-4 bg-muted animate-pulse rounded w-full" />
+                <div className="h-4 bg-muted animate-pulse rounded w-3/4" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -165,8 +225,6 @@ const MovieDetails = () => {
       </div>
     );
   }
-
-  const imageBaseUrl = "https://image.tmdb.org/t/p";
 
   return (
     <div className="min-h-screen bg-background">
