@@ -10,7 +10,6 @@ import Dashboard from "./modules/dashboard";
 import MyList from "./modules/movies/pages/MyListPage";
 import Profile from "./modules/profile";
 import Search from "./modules/movies/pages/SearchPage";
-import Collections from "./modules/collections";
 import Calendar from "./modules/calendar";
 import MovieDetails from "./pages/MovieDetails";
 import Categories from "./pages/Categories";
@@ -67,14 +66,6 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <MovieDetails />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/collections"
-              element={
-                <ProtectedRoute>
-                  <Collections />
                 </ProtectedRoute>
               }
             />
