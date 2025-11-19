@@ -78,19 +78,42 @@ const Profile = () => {
     try {
       setUploading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        toast.error("É preciso estar autenticado para atualizar o avatar.");
+        return;
+      }
 
       const file = event.target.files?.[0];
       if (!file) return;
+      event.target.value = "";
+
+      const allowedExtensions = ["jpg", "jpeg", "png", "webp"];
+      const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp"];
+      const maxFileSize = 10 * 1024 * 1024; // 10MB
+
+      const fileExt = file.name.split(".").pop()?.toLowerCase();
+      if (!fileExt || !allowedExtensions.includes(fileExt) || !allowedMimeTypes.includes(file.type)) {
+        toast.error("Formato inválido. Use JPG, JPEG, PNG ou WEBP.");
+        return;
+      }
+
+      if (file.size > maxFileSize) {
+        toast.error("O arquivo deve ter no máximo 10MB.");
+        return;
+      }
 
       // Upload para o Storage do Supabase
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${user.id}-${Math.random()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+      const fileName = `${user.id}-${uniqueSuffix}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          contentType: file.type,
+          upsert: true,
+        });
 
       if (uploadError) throw uploadError;
 
@@ -194,7 +217,7 @@ const Profile = () => {
               <input
                 id="avatar-upload"
                 type="file"
-                accept="image/*"
+                accept=".jpg,.jpeg,.png,.webp"
                 className="hidden"
                 onChange={handleUploadAvatar}
                 disabled={uploading}

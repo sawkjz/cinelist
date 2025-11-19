@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Film, Search, User, Calendar, BookOpen, Star, Home, List, LogOut, Grid } from "lucide-react";
+import { Film, Search, User, Calendar, Star, Home, List, LogOut, Grid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -22,7 +22,6 @@ const Navbar = () => {
     { path: "/search", label: "Pesquisar", icon: Search },
     { path: "/categories", label: "Categorias", icon: Grid },
     { path: "/my-list", label: "Minha Lista", icon: List },
-    { path: "/collections", label: "Coleções", icon: BookOpen },
     { path: "/calendar", label: "Calendário", icon: Calendar },
     { path: "/profile", label: "Perfil", icon: User },
   ];
