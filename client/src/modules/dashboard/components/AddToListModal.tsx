@@ -2,16 +2,13 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Plus, List, Check } from "lucide-react";
+import { Plus, List } from "lucide-react";
 import { toast } from "sonner";
+import { ListaSupabaseService } from "@/services/ListaSupabaseService";
+import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 
-interface Lista {
-  id: number;
-  nome: string;
-  descricao: string;
-  totalFilmes: number;
-}
+type Lista = Database['public']['Tables']['profile_movies_favlist']['Row'];
 
 interface Movie {
   id: number;
@@ -26,13 +23,13 @@ interface AddToListModalProps {
   isOpen: boolean;
   onClose: () => void;
   movie: Movie;
-  usuarioId: number;
+  usuarioId: number; // Este é o ID antigo do backend - não será mais usado
 }
 
 const AddToListModal = ({ isOpen, onClose, movie, usuarioId }: AddToListModalProps) => {
   const [listas, setListas] = useState<Lista[]>([]);
   const [mostrarFormNova, setMostrarFormNova] = useState(false);
-  const [novaLista, setNovaLista] = useState({ nome: "", descricao: "" });
+  const [novaLista, setNovaLista] = useState({ nome: "" });
   const [loading, setLoading] = useState(false);
   const [adicionando, setAdicionando] = useState<number | null>(null);
 
@@ -41,21 +38,22 @@ const AddToListModal = ({ isOpen, onClose, movie, usuarioId }: AddToListModalPro
       console.log("📂 [AddToListModal] Modal aberto para o filme:", movie.title);
       carregarListas();
     }
-  }, [isOpen, usuarioId]);
+  }, [isOpen]);
 
   const carregarListas = async () => {
-    console.log("🔄 [AddToListModal] Carregando listas do usuário ID:", usuarioId);
+    console.log("🔄 [AddToListModal] Carregando listas do Supabase");
     
     try {
-      const response = await fetch(`http://localhost:8081/api/listas/usuario/${usuarioId}`);
+      const { data: { user } } = await supabase.auth.getUser();
       
-      if (!response.ok) {
-        throw new Error("Erro ao buscar listas");
+      if (!user) {
+        toast.error("Usuário não autenticado");
+        return;
       }
-      
-      const data = await response.json();
-      console.log("✅ [AddToListModal] Listas carregadas:", data);
-      setListas(data);
+
+      const listas = await ListaSupabaseService.buscarListas(user.id);
+      console.log("✅ [AddToListModal] Listas carregadas:", listas);
+      setListas(listas);
       
     } catch (error) {
       console.error("❌ [AddToListModal] Erro ao carregar listas:", error);
@@ -69,25 +67,22 @@ const AddToListModal = ({ isOpen, onClose, movie, usuarioId }: AddToListModalPro
       return;
     }
 
-    console.log("➕ [AddToListModal] Criando nova lista:", novaLista.nome);
+    console.log("➕ [AddToListModal] Criando nova lista no Supabase:", novaLista.nome);
     setLoading(true);
 
     try {
-      const response = await fetch(`http://localhost:8081/api/listas/usuario/${usuarioId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(novaLista),
-      });
-
-      if (!response.ok) {
-        throw new Error("Erro ao criar lista");
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast.error("Usuário não autenticado");
+        return;
       }
 
-      const listaCriada = await response.json();
+      const listaCriada = await ListaSupabaseService.criarLista(user.id, novaLista.nome);
       console.log("✅ [AddToListModal] Lista criada com sucesso:", listaCriada);
       
       setListas([listaCriada, ...listas]);
-      setNovaLista({ nome: "", descricao: "" });
+      setNovaLista({ nome: "" });
       setMostrarFormNova(false);
       toast.success("Lista criada com sucesso!");
       
@@ -104,29 +99,8 @@ const AddToListModal = ({ isOpen, onClose, movie, usuarioId }: AddToListModalPro
     setAdicionando(listaId);
 
     try {
-      const response = await fetch(
-        `http://localhost:8081/api/listas/usuario/${usuarioId}/adicionar-filme`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            listaId,
-            tmdbId: movie.id,
-            titulo: movie.title,
-            posterPath: movie.posterUrl,
-            anoLancamento: movie.year,
-            nota: movie.rating,
-            generos: movie.genre,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Erro ao adicionar filme");
-      }
-
-      console.log("✅ [AddToListModal] Filme adicionado com sucesso");
+      await ListaSupabaseService.adicionarFilme(listaId, movie.id);
+      console.log("✅ [AddToListModal] Filme adicionado com sucesso no Supabase");
       toast.success("Filme adicionado à lista!");
       onClose();
       
@@ -165,13 +139,7 @@ const AddToListModal = ({ isOpen, onClose, movie, usuarioId }: AddToListModalPro
               <Input
                 placeholder="Nome da lista"
                 value={novaLista.nome}
-                onChange={(e) => setNovaLista({ ...novaLista, nome: e.target.value })}
-              />
-              <Textarea
-                placeholder="Descrição (opcional)"
-                value={novaLista.descricao}
-                onChange={(e) => setNovaLista({ ...novaLista, descricao: e.target.value })}
-                rows={2}
+                onChange={(e) => setNovaLista({ nome: e.target.value })}
               />
               <Button onClick={criarNovaLista} disabled={loading} className="w-full">
                 {loading ? "Criando..." : "Criar Lista"}
@@ -192,9 +160,9 @@ const AddToListModal = ({ isOpen, onClose, movie, usuarioId }: AddToListModalPro
                   className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
                 >
                   <div>
-                    <h4 className="font-medium">{lista.nome}</h4>
+                    <h4 className="font-medium">{lista.list_name}</h4>
                     <p className="text-sm text-muted-foreground">
-                      {lista.totalFilmes} {lista.totalFilmes === 1 ? "filme" : "filmes"}
+                      Lista criada
                     </p>
                   </div>
                   <Button
@@ -202,14 +170,7 @@ const AddToListModal = ({ isOpen, onClose, movie, usuarioId }: AddToListModalPro
                     onClick={() => adicionarFilmeNaLista(lista.id)}
                     disabled={adicionando === lista.id}
                   >
-                    {adicionando === lista.id ? (
-                      "Adicionando..."
-                    ) : (
-                      <>
-                        <Check className="h-4 w-4 mr-1" />
-                        Adicionar
-                      </>
-                    )}
+                    {adicionando === lista.id ? "Adicionando..." : "Adicionar"}
                   </Button>
                 </div>
               ))

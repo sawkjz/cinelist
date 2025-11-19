@@ -41,6 +41,55 @@ export type Database = {
         }
         Relationships: []
       }
+      profile_movies_favlist: {
+        Row: {
+          id: number
+          user_id: string
+          list_name: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: number
+          user_id: string
+          list_name: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: number
+          user_id?: string
+          list_name?: string
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      profile_movies_favlist_movies: {
+        Row: {
+          id: number
+          favlist_id: number
+          movie_id: number
+          added_at: string | null
+        }
+        Insert: {
+          id?: number
+          favlist_id: number
+          movie_id: number
+          added_at?: string | null
+        }
+        Update: {
+          id?: number
+          favlist_id?: number
+          movie_id?: number
+          added_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "FK7fba8fg8498nyn05uo5c2vx68"
+            columns: ["favlist_id"]
+            referencedRelation: "profile_movies_favlist"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never

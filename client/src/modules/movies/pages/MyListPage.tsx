@@ -5,29 +5,29 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Plus, Trash2, Film } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { ListaSupabaseService } from "@/services/ListaSupabaseService";
+import type { Database } from "@/integrations/supabase/types";
 
-interface Filme {
+type ListaSupabase = Database['public']['Tables']['profile_movies_favlist']['Row'];
+
+interface FilmeDetalhes {
   id: number;
-  tmdbId: number;
-  titulo: string;
-  posterPath: string;
-  anoLancamento: string;
-  nota: number;
-  generos: string;
+  title: string;
+  poster_path: string;
+  release_date: string;
+  vote_average: number;
+  genres: Array<{ id: number; name: string }>;
 }
 
-interface Lista {
-  id: number;
-  nome: string;
-  descricao: string;
-  totalFilmes: number;
-  filmes: Filme[];
+interface ListaComFilmes extends ListaSupabase {
+  movieIds: number[];
+  filmes: FilmeDetalhes[];
 }
 
 const MyListPage = () => {
-  const [listas, setListas] = useState<Lista[]>([]);
+  const [listas, setListas] = useState<ListaComFilmes[]>([]);
   const [loading, setLoading] = useState(true);
-  const usuarioId = 1; // TODO: Pegar do contexto de autenticação
 
   useEffect(() => {
     console.log("📂 [MyListPage] Carregando página Minha Lista");
@@ -35,19 +35,55 @@ const MyListPage = () => {
   }, []);
 
   const carregarListas = async () => {
-    console.log("🔄 [MyListPage] Buscando listas do usuário ID:", usuarioId);
     setLoading(true);
 
     try {
-      const response = await fetch(`http://localhost:8081/api/listas/usuario/${usuarioId}`);
-
-      if (!response.ok) {
-        throw new Error("Erro ao buscar listas");
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        console.log("❌ [MyListPage] Usuário não autenticado");
+        toast.error("Usuário não autenticado");
+        setLoading(false);
+        return;
       }
 
-      const data = await response.json();
-      console.log("✅ [MyListPage] Listas carregadas:", data);
-      setListas(data);
+      console.log("🔄 [MyListPage] Buscando listas do usuário:", user.id);
+      
+      const listasSupabase = await ListaSupabaseService.buscarListas(user.id);
+      console.log("✅ [MyListPage] Listas do Supabase:", listasSupabase);
+
+      // Para cada lista, buscar os IDs dos filmes
+      const listasComFilmes = await Promise.all(
+        listasSupabase.map(async (lista) => {
+          const movieIds = await ListaSupabaseService.buscarFilmesDaLista(lista.id);
+          
+          // Buscar detalhes dos filmes através do backend Java
+          const filmes = await Promise.all(
+            movieIds.map(async (movieId) => {
+              try {
+                const response = await fetch(
+                  `http://localhost:8081/api/filmes/${movieId}`
+                );
+                if (response.ok) {
+                  return await response.json();
+                }
+              } catch (error) {
+                console.error(`❌ Erro ao buscar filme ${movieId}:`, error);
+              }
+              return null;
+            })
+          );
+
+          return {
+            ...lista,
+            movieIds,
+            filmes: filmes.filter(Boolean) as FilmeDetalhes[]
+          };
+        })
+      );
+
+      console.log("✅ [MyListPage] Listas carregadas com filmes:", listasComFilmes);
+      setListas(listasComFilmes);
     } catch (error) {
       console.error("❌ [MyListPage] Erro ao carregar listas:", error);
       toast.error("Erro ao carregar suas listas");
@@ -56,19 +92,11 @@ const MyListPage = () => {
     }
   };
 
-  const removerFilme = async (listaId: number, tmdbId: number, titulo: string) => {
+  const removerFilme = async (listaId: number, movieId: number, titulo: string) => {
     console.log(`🗑️ [MyListPage] Removendo filme "${titulo}" da lista ID:`, listaId);
 
     try {
-      const response = await fetch(
-        `http://localhost:8081/api/listas/usuario/${usuarioId}/lista/${listaId}/filme/${tmdbId}`,
-        { method: "DELETE" }
-      );
-
-      if (!response.ok) {
-        throw new Error("Erro ao remover filme");
-      }
-
+      await ListaSupabaseService.removerFilme(listaId, movieId);
       console.log("✅ [MyListPage] Filme removido com sucesso");
       toast.success(`"${titulo}" removido da lista`);
       carregarListas(); // Recarregar listas
@@ -86,15 +114,7 @@ const MyListPage = () => {
     }
 
     try {
-      const response = await fetch(
-        `http://localhost:8081/api/listas/usuario/${usuarioId}/lista/${listaId}`,
-        { method: "DELETE" }
-      );
-
-      if (!response.ok) {
-        throw new Error("Erro ao deletar lista");
-      }
-
+      await ListaSupabaseService.deletarLista(listaId);
       console.log("✅ [MyListPage] Lista deletada com sucesso");
       toast.success(`Lista "${nome}" deletada`);
       carregarListas(); // Recarregar listas
@@ -144,19 +164,16 @@ const MyListPage = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-2xl font-cinzel font-bold text-foreground flex items-center gap-2">
-                      {lista.nome}
+                      {lista.list_name}
                       <span className="text-sm font-normal text-muted-foreground">
-                        ({lista.totalFilmes} {lista.totalFilmes === 1 ? "filme" : "filmes"})
+                        ({lista.filmes.length} {lista.filmes.length === 1 ? "filme" : "filmes"})
                       </span>
                     </h2>
-                    {lista.descricao && (
-                      <p className="text-muted-foreground mt-1">{lista.descricao}</p>
-                    )}
                   </div>
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => deletarLista(lista.id, lista.nome)}
+                    onClick={() => deletarLista(lista.id, lista.list_name)}
                   >
                     <Trash2 className="h-4 w-4 mr-1" />
                     Deletar Lista
@@ -174,22 +191,22 @@ const MyListPage = () => {
                     {lista.filmes.map((filme) => (
                       <div key={filme.id} className="relative group">
                         <MovieCard
-                          id={filme.tmdbId}
-                          title={filme.titulo}
-                          year={filme.anoLancamento}
-                          rating={filme.nota}
+                          id={filme.id}
+                          title={filme.title}
+                          year={filme.release_date?.split('-')[0] || ''}
+                          rating={filme.vote_average}
                           posterUrl={
-                            filme.posterPath
-                              ? `https://image.tmdb.org/t/p/w500${filme.posterPath}`
+                            filme.poster_path
+                              ? `https://image.tmdb.org/t/p/w500${filme.poster_path}`
                               : "/placeholder.svg"
                           }
-                          genre={filme.generos}
+                          genre={filme.genres?.map(g => g.name).join(', ') || ''}
                         />
                         <Button
                           variant="destructive"
                           size="sm"
                           className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                          onClick={() => removerFilme(lista.id, filme.tmdbId, filme.titulo)}
+                          onClick={() => removerFilme(lista.id, filme.id, filme.title)}
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
