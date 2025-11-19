@@ -63,7 +63,22 @@ const SearchPage = () => {
   };
 
   const handleSearch = async () => {
-    if (!searchTerm.trim()) return;
+    const trimmedTerm = searchTerm.trim();
+
+    if (!trimmedTerm) {
+      setSearched(false);
+      setMovies([]);
+
+      if (!suggestions.length && !loadingSuggestions) {
+        if (suggestionsCache) {
+          setSuggestions(suggestionsCache);
+        } else {
+          setLoadingSuggestions(true);
+          loadSuggestions();
+        }
+      }
+      return;
+    }
 
     // Cancelar requisição anterior se existir
     if (abortControllerRef.current) {
@@ -71,7 +86,7 @@ const SearchPage = () => {
     }
 
     // Verificar cache primeiro
-    const cacheKey = searchTerm.toLowerCase().trim();
+    const cacheKey = trimmedTerm.toLowerCase();
     if (searchCache.has(cacheKey)) {
       setMovies(searchCache.get(cacheKey)!);
       setSearched(true);
@@ -86,7 +101,7 @@ const SearchPage = () => {
 
     try {
       const response = await fetch(
-        `http://localhost:8081/api/filmes/search?query=${encodeURIComponent(searchTerm)}&page=1`,
+        `http://localhost:8081/api/filmes/search?query=${encodeURIComponent(trimmedTerm)}&page=1`,
         { signal: abortControllerRef.current.signal }
       );
       const data = await response.json();
