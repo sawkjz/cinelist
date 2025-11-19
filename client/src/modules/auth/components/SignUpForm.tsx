@@ -18,6 +18,7 @@ const SignUpForm = ({ onSubmit, isLoading }: SignUpFormProps) => {
           type="email"
           placeholder="seu@email.com"
           disabled={isLoading}
+          required
         />
       </div>
       <div className="space-y-2">
@@ -28,6 +29,22 @@ const SignUpForm = ({ onSubmit, isLoading }: SignUpFormProps) => {
           type="password"
           placeholder="••••••••"
           disabled={isLoading}
+          required
+          minLength={6}
+        />
+        <p className="text-xs text-muted-foreground">
+          Mínimo 6 caracteres
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="signup-confirm-password">Confirmar Senha</Label>
+        <Input
+          id="signup-confirm-password"
+          name="signup-confirm-password"
+          type="password"
+          placeholder="••••••••"
+          disabled={isLoading}
+          required
           minLength={6}
         />
       </div>
