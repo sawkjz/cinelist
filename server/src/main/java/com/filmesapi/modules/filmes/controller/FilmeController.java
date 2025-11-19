@@ -7,7 +7,6 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/api/filmes")
-@CrossOrigin(origins = "${app.cors.allowed-origin}")
 public class FilmeController {
 
     private final TMDBService tmdbService;

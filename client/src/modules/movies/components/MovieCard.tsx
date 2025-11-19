@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { Star, Plus, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { toast } from "sonner";
+import AddToListModal from "@/modules/dashboard/components/AddToListModal";
 
 interface MovieCardProps {
   id: number;
@@ -15,22 +16,35 @@ interface MovieCardProps {
 
 const MovieCard = ({ id, title, year, rating, posterUrl, genre }: MovieCardProps) => {
   const navigate = useNavigate();
+  const [showModal, setShowModal] = useState(false);
 
   const handleAddToList = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
-    toast.success(`"${title}" adicionado à sua lista!`);
-    // TODO: Implementar adição real à lista
+    console.log("➕ [MovieCard] Abrindo modal para adicionar filme:", title);
+    setShowModal(true);
   };
 
   const handleViewInfo = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     navigate(`/movie/${id}`);
   };
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Prevenir navegação se clicar dentro do modal
+    if (showModal) {
+      e.stopPropagation();
+      return;
+    }
+    navigate(`/movie/${id}`);
+  };
+
   return (
+    <>
     <Card 
       className="group relative overflow-hidden bg-gradient-card border-border/50 hover:border-accent/50 transition-all duration-300 hover:shadow-glow cursor-pointer"
-      onClick={handleViewInfo}
+      onClick={handleCardClick}
     >
       <div className="aspect-[2/3] relative overflow-hidden">
         <img
@@ -74,6 +88,16 @@ const MovieCard = ({ id, title, year, rating, posterUrl, genre }: MovieCardProps
         <span className="text-xs text-muted-foreground truncate block">{genre}</span>
       </div>
     </Card>
+    {/* Modal de Adicionar às Listas - FORA do Card para evitar propagação de eventos */}
+    {showModal && (
+      <AddToListModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        movie={{ id, title, posterUrl, year, rating, genre }}
+        usuarioId={1} // TODO: Pegar do contexto de autenticação
+      />
+    )}
+    </>
   );
 };
 

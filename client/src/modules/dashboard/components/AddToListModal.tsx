@@ -1,0 +1,224 @@
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Plus, List, Check } from "lucide-react";
+import { toast } from "sonner";
+
+interface Lista {
+  id: number;
+  nome: string;
+  descricao: string;
+  totalFilmes: number;
+}
+
+interface Movie {
+  id: number;
+  title: string;
+  posterUrl: string;
+  year: string;
+  rating: number;
+  genre: string;
+}
+
+interface AddToListModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  movie: Movie;
+  usuarioId: number;
+}
+
+const AddToListModal = ({ isOpen, onClose, movie, usuarioId }: AddToListModalProps) => {
+  const [listas, setListas] = useState<Lista[]>([]);
+  const [mostrarFormNova, setMostrarFormNova] = useState(false);
+  const [novaLista, setNovaLista] = useState({ nome: "", descricao: "" });
+  const [loading, setLoading] = useState(false);
+  const [adicionando, setAdicionando] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      console.log("📂 [AddToListModal] Modal aberto para o filme:", movie.title);
+      carregarListas();
+    }
+  }, [isOpen, usuarioId]);
+
+  const carregarListas = async () => {
+    console.log("🔄 [AddToListModal] Carregando listas do usuário ID:", usuarioId);
+    
+    try {
+      const response = await fetch(`http://localhost:8081/api/listas/usuario/${usuarioId}`);
+      
+      if (!response.ok) {
+        throw new Error("Erro ao buscar listas");
+      }
+      
+      const data = await response.json();
+      console.log("✅ [AddToListModal] Listas carregadas:", data);
+      setListas(data);
+      
+    } catch (error) {
+      console.error("❌ [AddToListModal] Erro ao carregar listas:", error);
+      toast.error("Erro ao carregar suas listas");
+    }
+  };
+
+  const criarNovaLista = async () => {
+    if (!novaLista.nome.trim()) {
+      toast.error("Digite um nome para a lista");
+      return;
+    }
+
+    console.log("➕ [AddToListModal] Criando nova lista:", novaLista.nome);
+    setLoading(true);
+
+    try {
+      const response = await fetch(`http://localhost:8081/api/listas/usuario/${usuarioId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(novaLista),
+      });
+
+      if (!response.ok) {
+        throw new Error("Erro ao criar lista");
+      }
+
+      const listaCriada = await response.json();
+      console.log("✅ [AddToListModal] Lista criada com sucesso:", listaCriada);
+      
+      setListas([listaCriada, ...listas]);
+      setNovaLista({ nome: "", descricao: "" });
+      setMostrarFormNova(false);
+      toast.success("Lista criada com sucesso!");
+      
+    } catch (error) {
+      console.error("❌ [AddToListModal] Erro ao criar lista:", error);
+      toast.error("Erro ao criar lista");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const adicionarFilmeNaLista = async (listaId: number) => {
+    console.log("🎬 [AddToListModal] Adicionando filme", movie.title, "na lista ID:", listaId);
+    setAdicionando(listaId);
+
+    try {
+      const response = await fetch(
+        `http://localhost:8081/api/listas/usuario/${usuarioId}/adicionar-filme`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            listaId,
+            tmdbId: movie.id,
+            titulo: movie.title,
+            posterPath: movie.posterUrl,
+            anoLancamento: movie.year,
+            nota: movie.rating,
+            generos: movie.genre,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Erro ao adicionar filme");
+      }
+
+      console.log("✅ [AddToListModal] Filme adicionado com sucesso");
+      toast.success("Filme adicionado à lista!");
+      onClose();
+      
+    } catch (error: any) {
+      console.error("❌ [AddToListModal] Erro ao adicionar filme:", error);
+      toast.error(error.message || "Erro ao adicionar filme");
+    } finally {
+      setAdicionando(null);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <List className="h-5 w-5" />
+            Adicionar "{movie.title}" a uma lista
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Botão para criar nova lista */}
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => setMostrarFormNova(!mostrarFormNova)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            {mostrarFormNova ? "Cancelar" : "Criar Nova Lista"}
+          </Button>
+
+          {/* Formulário de nova lista */}
+          {mostrarFormNova && (
+            <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
+              <Input
+                placeholder="Nome da lista"
+                value={novaLista.nome}
+                onChange={(e) => setNovaLista({ ...novaLista, nome: e.target.value })}
+              />
+              <Textarea
+                placeholder="Descrição (opcional)"
+                value={novaLista.descricao}
+                onChange={(e) => setNovaLista({ ...novaLista, descricao: e.target.value })}
+                rows={2}
+              />
+              <Button onClick={criarNovaLista} disabled={loading} className="w-full">
+                {loading ? "Criando..." : "Criar Lista"}
+              </Button>
+            </div>
+          )}
+
+          {/* Lista de listas existentes */}
+          <div className="space-y-2 max-h-[300px] overflow-y-auto">
+            {listas.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                Você ainda não tem listas. Crie uma nova!
+              </p>
+            ) : (
+              listas.map((lista) => (
+                <div
+                  key={lista.id}
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
+                >
+                  <div>
+                    <h4 className="font-medium">{lista.nome}</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {lista.totalFilmes} {lista.totalFilmes === 1 ? "filme" : "filmes"}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => adicionarFilmeNaLista(lista.id)}
+                    disabled={adicionando === lista.id}
+                  >
+                    {adicionando === lista.id ? (
+                      "Adicionando..."
+                    ) : (
+                      <>
+                        <Check className="h-4 w-4 mr-1" />
+                        Adicionar
+                      </>
+                    )}
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default AddToListModal;
