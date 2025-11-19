@@ -6,6 +6,8 @@ import NotificationsSection from "./components/NotificationsSection";
 import TrendingSection from "./components/TrendingSection";
 import ContinueWatchingSection from "./components/ContinueWatchingSection";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import { toFiveStarScale } from "@/utils/rating";
 
 interface Movie {
   id: number;
@@ -24,6 +26,7 @@ let dashboardCache: {
 } | null = null;
 
 const DashboardPage = () => {
+  const navigate = useNavigate();
   const [popularMovies, setPopularMovies] = useState<Movie[]>(dashboardCache?.popular || []);
   const [nowPlayingMovies, setNowPlayingMovies] = useState<Movie[]>(dashboardCache?.nowPlaying || []);
   const [trendingMovies, setTrendingMovies] = useState<Movie[]>(dashboardCache?.trending || []);
@@ -47,7 +50,7 @@ const DashboardPage = () => {
       id: movie.id,
       title: movie.title,
       year: movie.release_date?.split("-")[0] || "N/A",
-      rating: movie.vote_average || 0,
+      rating: toFiveStarScale(movie.vote_average),
       posterUrl: movie.poster_path 
         ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
         : "/placeholder.svg",
@@ -162,6 +165,37 @@ const DashboardPage = () => {
         </section>
         
         <ContinueWatchingSection movies={loading ? [] : nowPlayingMovies.slice(0, 4)} />
+
+        <div className="mt-10 flex justify-center">
+          <button
+            type="button"
+            onClick={() => navigate("/all-movies")}
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="lucide lucide-film h-4 w-4 mr-2"
+            >
+              <rect width="18" height="18" x="3" y="3" rx="2" />
+              <path d="M7 3v18" />
+              <path d="M3 7.5h4" />
+              <path d="M3 12h18" />
+              <path d="M3 16.5h4" />
+              <path d="M17 3v18" />
+              <path d="M17 7.5h4" />
+              <path d="M17 16.5h4" />
+            </svg>
+            Buscar novos filmes
+          </button>
+        </div>
       </main>
     </div>
   );

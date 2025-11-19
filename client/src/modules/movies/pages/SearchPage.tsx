@@ -4,6 +4,7 @@ import MovieCard from "../components/MovieCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search as SearchIcon } from "lucide-react";
+import { toFiveStarScale } from "@/utils/rating";
 
 interface Movie {
   id: number;
@@ -46,7 +47,7 @@ const SearchPage = () => {
         id: movie.id,
         title: movie.title,
         year: movie.release_date?.split("-")[0] || "N/A",
-        rating: movie.vote_average || 0,
+        rating: toFiveStarScale(movie.vote_average),
         posterUrl: movie.poster_path 
           ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
           : "/placeholder.svg",
@@ -110,7 +111,7 @@ const SearchPage = () => {
         id: movie.id,
         title: movie.title,
         year: movie.release_date?.split("-")[0] || "N/A",
-        rating: movie.vote_average || 0,
+        rating: toFiveStarScale(movie.vote_average),
         posterUrl: movie.poster_path
           ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
           : "/placeholder.svg",

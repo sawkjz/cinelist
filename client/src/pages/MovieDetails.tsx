@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { useAuthContext } from "@/contexts/AuthContext";
+import { toFiveStarScale } from "@/utils/rating";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8081";
 
@@ -78,6 +79,7 @@ const MovieDetails = () => {
   const [submitting, setSubmitting] = useState(false);
   const { backendUser } = useAuthContext();
   const [starBursts, setStarBursts] = useState<StarBurst[]>([]);
+  const normalizedMovieRating = movie ? toFiveStarScale(movie.vote_average) : 0;
 
   useEffect(() => {
     if (id) {
@@ -342,7 +344,10 @@ const formatReviewDateTime = (value?: string) => {
             <div className="flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-1">
                 <Star className="h-5 w-5 fill-yellow-500 text-yellow-500" />
-                <span className="font-semibold">{movie.vote_average.toFixed(1)}</span>
+                <span className="font-semibold">
+                  {normalizedMovieRating.toFixed(1)}
+                </span>
+                <span className="text-xs text-muted-foreground">/5</span>
               </div>
               <span className="text-muted-foreground">{movie.release_date?.split("-")[0]}</span>
               {movie.runtime && (
@@ -382,12 +387,12 @@ const formatReviewDateTime = (value?: string) => {
                 <div className="flex items-center">
                   <div className="relative inline-flex">
                     <div className="flex gap-2">
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => {
+                      {[1, 2, 3, 4, 5].map((star) => {
                         const button = (
                           <button
                             onClick={() => {
                               setUserRating(star);
-                              if (star === 10) {
+                              if (star === 5) {
                                 triggerPerfectScoreBurst();
                               }
                             }}
@@ -405,7 +410,7 @@ const formatReviewDateTime = (value?: string) => {
                           </button>
                         );
 
-                        if (star === 10) {
+                        if (star === 5) {
                           return (
                             <div key={star} className="relative flex">
                               {button}
@@ -452,7 +457,7 @@ const formatReviewDateTime = (value?: string) => {
                   </div>
 
                   {userRating > 0 && (
-                    <span className="ml-3 font-semibold text-accent">{userRating}/10</span>
+                    <span className="ml-3 font-semibold text-accent">{userRating}/5</span>
                   )}
                 </div>
               </div>
@@ -503,7 +508,9 @@ const formatReviewDateTime = (value?: string) => {
                     </div>
                     <div className="flex items-center gap-1">
                       <Star className="h-5 w-5 fill-yellow-500 text-yellow-500" />
-                      <span className="font-semibold">{review.nota}/10</span>
+                      <span className="font-semibold">
+                        {toFiveStarScale(review.nota).toFixed(1)}/5
+                      </span>
                     </div>
                   </div>
                   {review.comentario && (

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Star, ArrowLeft, MessageCircle, Film } from "lucide-react";
 import { useAuthContext } from "@/contexts/AuthContext";
+import { toFiveStarScale } from "@/utils/rating";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8081";
 
@@ -20,6 +21,9 @@ interface Review {
   dataAtualizacao?: string;
 }
 
+type CategorizedReview = Review & { normalizedScore: number };
+type ReviewCategoryWithItems = ReviewCategory & { items: CategorizedReview[] };
+
 interface ReviewCategory {
   id: string;
   title: string;
@@ -32,30 +36,30 @@ const REVIEW_CATEGORIES: ReviewCategory[] = [
   {
     id: "top",
     title: "Favoritos absolutos",
-    description: "Notas de 9 a 10 – filmes que você mais amou.",
+    description: "Notas de 4.5 a 5 – filmes que você mais amou.",
     icon: <Star className="h-5 w-5 text-yellow-500" />,
-    match: (score) => score >= 9,
+    match: (score) => score >= 4.5,
   },
   {
     id: "great",
     title: "Ótimas descobertas",
-    description: "Notas entre 7 e 8.9 – experiências muito positivas.",
+    description: "Notas entre 3.5 e 4.4 – experiências muito positivas.",
     icon: <Star className="h-5 w-5 text-emerald-400" />,
-    match: (score) => score >= 7 && score < 9,
+    match: (score) => score >= 3.5 && score < 4.5,
   },
   {
     id: "ok",
     title: "Médio pra bom",
-    description: "Notas entre 5 e 6.9 – filmes que agradaram, mas não brilharam.",
+    description: "Notas entre 2.5 e 3.4 – filmes que agradaram, mas não brilharam.",
     icon: <Star className="h-5 w-5 text-cyan-400" />,
-    match: (score) => score >= 5 && score < 7,
+    match: (score) => score >= 2.5 && score < 3.5,
   },
 ];
 
 const FALLBACK_CATEGORY: ReviewCategory = {
   id: "meh",
   title: "Pouco memoráveis",
-  description: "Notas abaixo de 5 – provavelmente você não veria de novo.",
+  description: "Notas abaixo de 2.5 – provavelmente você não veria de novo.",
   icon: <Star className="h-5 w-5 text-rose-400" />,
   match: () => true,
 };
@@ -113,18 +117,21 @@ const UserReviewsPage = () => {
     fetchReviews();
   }, [backendUser]);
 
-  const groupedReviews = useMemo(() => {
-    const groups = [...REVIEW_CATEGORIES, FALLBACK_CATEGORY].map((category) => ({
-      ...category,
-      items: [] as Review[],
-    }));
+  const groupedReviews = useMemo<ReviewCategoryWithItems[]>(() => {
+    const groups: ReviewCategoryWithItems[] = [...REVIEW_CATEGORIES, FALLBACK_CATEGORY].map(
+      (category) => ({
+        ...category,
+        items: [] as CategorizedReview[],
+      })
+    );
 
     reviews.forEach((review) => {
+      const normalizedScore = toFiveStarScale(review.nota);
       const category =
-        REVIEW_CATEGORIES.find((cat) => cat.match(review.nota)) ?? FALLBACK_CATEGORY;
+        REVIEW_CATEGORIES.find((cat) => cat.match(normalizedScore)) ?? FALLBACK_CATEGORY;
       const targetGroup = groups.find((group) => group.id === category.id);
       if (targetGroup) {
-        targetGroup.items.push(review);
+        targetGroup.items.push({ ...review, normalizedScore });
       }
     });
 
@@ -194,7 +201,7 @@ const UserReviewsPage = () => {
             {loading
               ? "Carregando suas avaliações..."
               : totalReviews === 0
-              ? "Você ainda não registrou comentários. Que tal avaliar o seu próximo filme favorito?"
+              ? null
               : "Todas as avaliações realizadas com sua conta são listadas abaixo, prontas para consulta."}
           </div>
         </Card>
@@ -244,7 +251,9 @@ const UserReviewsPage = () => {
                           </div>
                           <div className="flex items-center gap-2">
                             <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
-                            <span className="text-base font-semibold">{review.nota.toFixed(1)}/10</span>
+                            <span className="text-base font-semibold">
+                              {review.normalizedScore.toFixed(1)}/5
+                            </span>
                           </div>
                         </div>
                         {review.comentario && (

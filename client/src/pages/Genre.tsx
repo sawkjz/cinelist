@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import MovieCard from "@/modules/movies/components/MovieCard";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { toFiveStarScale } from "@/utils/rating";
 
 interface Movie {
   id: number;
@@ -40,7 +41,7 @@ const GenrePage = () => {
         id: movie.id,
         title: movie.title,
         year: movie.release_date?.split("-")[0] || "N/A",
-        rating: movie.vote_average || 0,
+        rating: toFiveStarScale(movie.vote_average),
         posterUrl: movie.poster_path
           ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
           : "/placeholder.svg",

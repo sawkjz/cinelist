@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ListaSupabaseService } from "@/services/ListaSupabaseService";
 import type { Database } from "@/integrations/supabase/types";
+import { toFiveStarScale } from "@/utils/rating";
 
 type ListaSupabase = Database['public']['Tables']['profile_movies_favlist']['Row'];
 
@@ -194,7 +195,7 @@ const MyListPage = () => {
                           id={filme.id}
                           title={filme.title}
                           year={filme.release_date?.split('-')[0] || ''}
-                          rating={filme.vote_average}
+                          rating={toFiveStarScale(filme.vote_average)}
                           posterUrl={
                             filme.poster_path
                               ? `https://image.tmdb.org/t/p/w500${filme.poster_path}`
