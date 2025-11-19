@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Film, Search, User, Calendar, Star, Home, List, LogOut, Grid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 const Navbar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { signOut } = useAuthContext();
   
   const handleLogout = async () => {
@@ -62,10 +63,13 @@ const Navbar = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="icon"
-              className="hover:bg-foreground hover:text-background transition-colors"
+              title="Minhas avaliações"
+              aria-label="Minhas avaliações"
+              onClick={() => navigate("/profile/reviews")}
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-10 w-10 hover:bg-foreground hover:text-background transition-colors"
             >
               <Star className="h-5 w-5" />
             </Button>

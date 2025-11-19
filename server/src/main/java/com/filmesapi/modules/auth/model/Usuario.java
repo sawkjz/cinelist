@@ -26,6 +26,12 @@ public class Usuario {
     @Column(nullable = false)
     private String nome;
 
+    @Column(name = "external_id", unique = true)
+    private String externalId;
+
+    @Column(name = "avatar_url")
+    private String avatarUrl;
+
     @Column(name = "data_criacao")
     private LocalDateTime dataCriacao;
 
@@ -50,5 +56,17 @@ public class Usuario {
     
     public String getEmail() {
         return email;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public String getExternalId() {
+        return externalId;
     }
 }

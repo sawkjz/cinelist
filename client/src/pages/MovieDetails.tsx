@@ -4,8 +4,11 @@ import { Star, ArrowLeft, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuthContext } from "@/contexts/AuthContext";
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8081";
 
 interface MovieDetails {
   id: number;
@@ -25,9 +28,11 @@ interface Review {
   id: number;
   usuarioId: number;
   nomeUsuario: string;
+  avatarUrl?: string | null;
   nota: number;
   comentario: string;
   dataCriacao: string;
+  dataAtualizacao?: string;
 }
 
 interface StarBurstParticle {
@@ -71,11 +76,10 @@ const MovieDetails = () => {
   const [userComment, setUserComment] = useState("");
   const [hoveredStar, setHoveredStar] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const { backendUser } = useAuthContext();
   const [starBursts, setStarBursts] = useState<StarBurst[]>([]);
 
   useEffect(() => {
-    loadCurrentUser();
     if (id) {
       // Verifica cache antes de fazer requisições
       if (movieDetailsCache.has(id)) {
@@ -92,35 +96,9 @@ const MovieDetails = () => {
     }
   }, [id]);
 
-  const loadCurrentUser = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // Extract user ID from Supabase metadata or email
-        // For now, using a simple hash of email as userId
-        // You may want to store a backend_user_id in Supabase profiles table
-        const userId = Math.abs(hashCode(user.email || ""));
-        setCurrentUserId(userId);
-      }
-    } catch (error) {
-      console.error("Erro ao carregar usuário:", error);
-    }
-  };
-
-  // Simple hash function to generate consistent user ID from email
-  const hashCode = (str: string): number => {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return hash;
-  };
-
   const fetchMovieDetails = async () => {
     try {
-      const response = await fetch(`http://localhost:8081/api/filmes/${id}`);
+      const response = await fetch(`${BACKEND_URL}/api/filmes/${id}`);
       const data = await response.json();
       setMovie(data);
       // Salva no cache
@@ -137,7 +115,7 @@ const MovieDetails = () => {
 
   const fetchReviews = async () => {
     try {
-      const response = await fetch(`http://localhost:8081/api/reviews/filme/${id}`);
+      const response = await fetch(`${BACKEND_URL}/api/reviews/filme/${id}`);
       if (response.ok) {
         const data = await response.json();
         setReviews(data);
@@ -191,7 +169,7 @@ const MovieDetails = () => {
       return;
     }
 
-    if (!currentUserId) {
+    if (!backendUser?.id) {
       toast.error("Você precisa estar logado para avaliar");
       return;
     }
@@ -205,7 +183,7 @@ const MovieDetails = () => {
         comentario: userComment || "",
       };
 
-      const response = await fetch(`http://localhost:8081/api/reviews/usuario/${currentUserId}`, {
+      const response = await fetch(`${BACKEND_URL}/api/reviews/usuario/${backendUser.id}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -234,6 +212,33 @@ const MovieDetails = () => {
   };
 
   const imageBaseUrl = "https://image.tmdb.org/t/p";
+
+const getInitials = (value?: string | null) => {
+  if (!value) return "U";
+  const parts = value.trim().split(" ").filter(Boolean);
+  if (parts.length === 0) return "U";
+  const initials = parts.slice(0, 2).map((part) => part[0]?.toUpperCase() || "").join("");
+  return initials || "U";
+};
+
+const formatReviewDateTime = (value?: string) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const formattedDate = date.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+
+  const formattedTime = date.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  return `${formattedDate} às ${formattedTime}`;
+};
 
   if (loading) {
     return (
@@ -464,7 +469,7 @@ const MovieDetails = () => {
 
               <Button
                 onClick={handleSubmitReview}
-                disabled={submitting || userRating === 0}
+                disabled={submitting || userRating === 0 || !backendUser}
                 className="bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50"
               >
                 {submitting ? "Publicando..." : "Publicar Review"}
@@ -482,11 +487,19 @@ const MovieDetails = () => {
               reviews.map((review) => (
                 <Card key={review.id} className="p-6 bg-gradient-card border-border/50">
                   <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <p className="font-semibold">{review.nomeUsuario}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(review.dataCriacao).toLocaleDateString("pt-BR")}
-                      </p>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-11 w-11">
+                        <AvatarImage src={review.avatarUrl || undefined} alt={review.nomeUsuario} />
+                        <AvatarFallback className="bg-accent/20 text-accent">
+                          {getInitials(review.nomeUsuario)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-semibold">{review.nomeUsuario}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatReviewDateTime(review.dataCriacao)}
+                        </p>
+                      </div>
                     </div>
                     <div className="flex items-center gap-1">
                       <Star className="h-5 w-5 fill-yellow-500 text-yellow-500" />

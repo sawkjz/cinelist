@@ -9,6 +9,7 @@ import Auth from "./modules/auth";
 import Dashboard from "./modules/dashboard";
 import MyList from "./modules/movies/pages/MyListPage";
 import Profile from "./modules/profile";
+import UserReviewsPage from "./modules/profile/pages/UserReviews";
 import Search from "./modules/movies/pages/SearchPage";
 import Calendar from "./modules/calendar";
 import MovieDetails from "./pages/MovieDetails";
@@ -50,6 +51,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile/reviews"
+              element={
+                <ProtectedRoute>
+                  <UserReviewsPage />
                 </ProtectedRoute>
               }
             />
