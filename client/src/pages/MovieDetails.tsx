@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, CSSProperties } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Star, ArrowLeft, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,33 @@ interface Review {
   dataCriacao: string;
 }
 
+interface StarBurstParticle {
+  id: string;
+  x: number;
+  y: number;
+  fall: number;
+  delay: number;
+  size: number;
+  scaleMid: number;
+  scaleEnd: number;
+  duration: number;
+  opacity: number;
+}
+
+interface StarBurst {
+  id: number;
+  particles: StarBurstParticle[];
+}
+
+type StarParticleStyle = CSSProperties & {
+  "--x"?: string;
+  "--y"?: string;
+  "--delay"?: string;
+  "--fall"?: string;
+  "--scale-mid"?: string;
+  "--scale-end"?: string;
+};
+
 // Cache global para detalhes de filmes
 const movieDetailsCache = new Map<string, MovieDetails>();
 const reviewsCache = new Map<string, Review[]>();
@@ -45,6 +72,7 @@ const MovieDetails = () => {
   const [hoveredStar, setHoveredStar] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [starBursts, setStarBursts] = useState<StarBurst[]>([]);
 
   useEffect(() => {
     loadCurrentUser();
@@ -126,6 +154,35 @@ const MovieDetails = () => {
   const handleAddToList = () => {
     toast.success("Filme adicionado à sua lista!");
     // TODO: Implementar adição real à lista do usuário
+  };
+
+  const triggerPerfectScoreBurst = () => {
+    const burstId = Date.now();
+    const particles: StarBurstParticle[] = Array.from({ length: 12 }).map((_, index) => {
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 80 + Math.random() * 80;
+      const x = Math.cos(angle) * distance;
+      const y = Math.sin(angle) * distance;
+
+      return {
+        id: `${burstId}-${index}`,
+        x,
+        y,
+        fall: 40 + Math.random() * 60,
+        delay: Math.random() * 120,
+        size: 8 + Math.random() * 6,
+        scaleMid: 0.95 + Math.random() * 0.25,
+        scaleEnd: 0.35 + Math.random() * 0.2,
+        duration: 850 + Math.random() * 300,
+        opacity: 0.8 + Math.random() * 0.2,
+      };
+    });
+
+    setStarBursts((prev) => [...prev, { id: burstId, particles }]);
+
+    window.setTimeout(() => {
+      setStarBursts((prev) => prev.filter((burst) => burst.id !== burstId));
+    }, 1400);
   };
 
   const handleSubmitReview = async () => {
@@ -317,26 +374,80 @@ const MovieDetails = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Sua nota</label>
-                <div className="flex gap-2">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
-                    <button
-                      key={star}
-                      onClick={() => setUserRating(star)}
-                      onMouseEnter={() => setHoveredStar(star)}
-                      onMouseLeave={() => setHoveredStar(0)}
-                      className="transition-transform hover:scale-110"
-                    >
-                      <Star
-                        className={`h-6 w-6 ${
-                          star <= (hoveredStar || userRating)
-                            ? "fill-yellow-500 text-yellow-500"
-                            : "text-muted-foreground"
-                        }`}
-                      />
-                    </button>
-                  ))}
+                <div className="flex items-center">
+                  <div className="relative inline-flex">
+                    <div className="flex gap-2">
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => {
+                        const button = (
+                          <button
+                            onClick={() => {
+                              setUserRating(star);
+                              if (star === 10) {
+                                triggerPerfectScoreBurst();
+                              }
+                            }}
+                            onMouseEnter={() => setHoveredStar(star)}
+                            onMouseLeave={() => setHoveredStar(0)}
+                            className="transition-transform hover:scale-110"
+                          >
+                            <Star
+                              className={`h-6 w-6 ${
+                                star <= (hoveredStar || userRating)
+                                  ? "fill-yellow-500 text-yellow-500"
+                                  : "text-muted-foreground"
+                              }`}
+                            />
+                          </button>
+                        );
+
+                        if (star === 10) {
+                          return (
+                            <div key={star} className="relative flex">
+                              {button}
+                              {starBursts.map((burst) => (
+                                <div
+                                  key={burst.id}
+                                  className="pointer-events-none absolute inset-0 flex items-center justify-center"
+                                >
+                                  {burst.particles.map((particle) => {
+                                    const style: StarParticleStyle = {
+                                      "--x": `${particle.x}px`,
+                                      "--y": `${particle.y}px`,
+                                      "--fall": `${particle.fall}px`,
+                                      "--delay": `${particle.delay}ms`,
+                                      "--scale-mid": `${particle.scaleMid}`,
+                                      "--scale-end": `${particle.scaleEnd}`,
+                                      width: `${particle.size}px`,
+                                      height: `${particle.size}px`,
+                                      opacity: particle.opacity,
+                                      animationDuration: `${particle.duration}ms`,
+                                    };
+
+                                    return (
+                                      <Star
+                                        key={particle.id}
+                                        className="star-burst-particle"
+                                        style={style}
+                                      />
+                                    );
+                                  })}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div key={star} className="flex">
+                            {button}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   {userRating > 0 && (
-                    <span className="ml-2 font-semibold text-accent">{userRating}/10</span>
+                    <span className="ml-3 font-semibold text-accent">{userRating}/10</span>
                   )}
                 </div>
               </div>
