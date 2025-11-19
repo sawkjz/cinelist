@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -10,9 +10,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Trophy, Film, Star, Calendar, Upload, Edit2, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAuthContext } from "@/contexts/AuthContext";
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8081";
 
 const Profile = () => {
   const navigate = useNavigate();
+  const { backendUser } = useAuthContext();
   const [userEmail, setUserEmail] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
   const [userBio, setUserBio] = useState<string>("");
@@ -20,10 +24,33 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [reviewsCount, setReviewsCount] = useState<number | null>(null);
 
   useEffect(() => {
     loadUserProfile();
   }, []);
+
+  useEffect(() => {
+    if (!backendUser?.id) {
+      setReviewsCount(null);
+      return;
+    }
+
+    const fetchReviewCount = async () => {
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/reviews/usuario/${backendUser.id}`);
+        if (!response.ok) {
+          throw new Error("Falha ao buscar avaliações");
+        }
+        const data = await response.json();
+        setReviewsCount(Array.isArray(data) ? data.length : 0);
+      } catch (error) {
+        console.error("Erro ao buscar contagem de avaliações:", error);
+      }
+    };
+
+    fetchReviewCount();
+  }, [backendUser]);
 
   const loadUserProfile = async () => {
     try {
@@ -153,10 +180,23 @@ const Profile = () => {
 
   const stats = [
     { icon: Film, label: "Filmes Assistidos", value: "47" },
-    { icon: Star, label: "Avaliações", value: "32" },
+    {
+      icon: Star,
+      label: "Avaliações",
+      value: reviewsCount !== null ? reviewsCount.toString() : "…",
+      onClick: () => navigate("/profile/reviews"),
+    },
     { icon: Calendar, label: "Dias Assistindo", value: "156" },
     { icon: Trophy, label: "Conquistas", value: "8" },
   ];
+
+  const handleStatKeyDown = (event: KeyboardEvent<HTMLDivElement>, action?: () => void) => {
+    if (!action) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      action();
+    }
+  };
 
   const getInitials = () => {
     if (userName) {
@@ -294,8 +334,20 @@ const Profile = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {stats.map((stat, index) => {
             const Icon = stat.icon;
+            const isInteractive = Boolean(stat.onClick);
             return (
-              <Card key={index} className="p-6 bg-card border-border/50 text-center">
+              <Card
+                key={index}
+                className={`p-6 bg-card border-border/50 text-center ${
+                  isInteractive
+                    ? "cursor-pointer transition hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    : ""
+                }`}
+                onClick={stat.onClick}
+                role={isInteractive ? "button" : undefined}
+                tabIndex={isInteractive ? 0 : undefined}
+                onKeyDown={(event) => handleStatKeyDown(event, stat.onClick)}
+              >
                 <Icon className="h-8 w-8 text-accent mx-auto mb-2" />
                 <p className="text-2xl font-bold text-foreground mb-1">{stat.value}</p>
                 <p className="text-sm text-muted-foreground">{stat.label}</p>

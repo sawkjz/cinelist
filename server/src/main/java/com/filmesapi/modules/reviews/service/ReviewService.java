@@ -85,16 +85,18 @@ public class ReviewService {
 
     private ReviewResponse toResponse(Review review) {
         Usuario usuario = review.usuario;
+        String nomeUsuario = usuario.getNome() != null ? usuario.getNome() : usuario.getEmail();
         return new ReviewResponse(
                 review.id,
                 usuario.getId(),
-                usuario.getEmail(),
+                nomeUsuario,
                 review.tmdbId,
                 review.tituloFilme,
                 review.nota,
                 review.comentario,
                 review.dataCriacao,
-                review.dataAtualizacao
+                review.dataAtualizacao,
+                usuario.getAvatarUrl()
         );
     }
 }
