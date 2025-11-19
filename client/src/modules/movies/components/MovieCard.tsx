@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import AddToListModal from "@/modules/dashboard/components/AddToListModal";
+import { toFiveStarScale } from "@/utils/rating";
 
 interface MovieCardProps {
   id: number;
@@ -17,6 +18,7 @@ interface MovieCardProps {
 const MovieCard = ({ id, title, year, rating, posterUrl, genre }: MovieCardProps) => {
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
+  const normalizedRating = toFiveStarScale(rating);
 
   const handleAddToList = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -82,7 +84,7 @@ const MovieCard = ({ id, title, year, rating, posterUrl, genre }: MovieCardProps
           <span className="text-xs text-muted-foreground">{year}</span>
           <div className="flex items-center gap-1">
             <Star className="h-3 w-3 fill-accent text-accent" />
-            <span className="text-xs font-medium text-accent">{rating.toFixed(1)}</span>
+            <span className="text-xs font-medium text-accent">{normalizedRating.toFixed(1)}</span>
           </div>
         </div>
         <span className="text-xs text-muted-foreground truncate block">{genre}</span>
