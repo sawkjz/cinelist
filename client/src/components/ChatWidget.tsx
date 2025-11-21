@@ -104,10 +104,6 @@ const ChatWidget = () => {
               )}
             </div>
 
-            <div className="rounded-2xl border border-white/10 p-3 text-xs text-[#f9da5c]/80">
-              Prefere outro canal? Envie uma mensagem pelo formulário de contato e eu retorno rapidinho.
-            </div>
-
             <form onSubmit={handleSubmit} className="relative">
               <input
                 value={inputValue}
