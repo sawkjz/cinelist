@@ -15,6 +15,28 @@ interface Movie {
   genre: string;
 }
 
+interface TmdbMovie {
+  id: number;
+  title: string;
+  release_date?: string;
+  vote_average?: number;
+  poster_path?: string | null;
+  genre_ids?: number[];
+}
+
+interface TmdbResponse {
+  results?: TmdbMovie[];
+}
+
+const mapTmdbToMovie = (movie: TmdbMovie): Movie => ({
+  id: movie.id,
+  title: movie.title,
+  year: movie.release_date?.split("-")[0] || "N/A",
+  rating: toFiveStarScale(movie.vote_average ?? 0),
+  posterUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : "/placeholder.svg",
+  genre: movie.genre_ids?.slice(0, 2).join(", ") || "N/A",
+});
+
 // Cache de buscas em memória
 const searchCache = new Map<string, Movie[]>();
 let suggestionsCache: Movie[] | null = null;
@@ -41,18 +63,9 @@ const SearchPage = () => {
   const loadSuggestions = async () => {
     try {
       const response = await fetch("http://localhost:8081/api/filmes/trending?page=1");
-      const data = await response.json();
+      const data: TmdbResponse = await response.json();
       
-      const formattedMovies: Movie[] = data.results.slice(0, 10).map((movie: any) => ({
-        id: movie.id,
-        title: movie.title,
-        year: movie.release_date?.split("-")[0] || "N/A",
-        rating: toFiveStarScale(movie.vote_average),
-        posterUrl: movie.poster_path 
-          ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-          : "/placeholder.svg",
-        genre: movie.genre_ids?.slice(0, 2).join(", ") || "N/A"
-      }));
+      const formattedMovies: Movie[] = (data.results ?? []).slice(0, 10).map(mapTmdbToMovie);
       
       suggestionsCache = formattedMovies; // Salvar no cache
       setSuggestions(formattedMovies);
@@ -105,18 +118,9 @@ const SearchPage = () => {
         `http://localhost:8081/api/filmes/search?query=${encodeURIComponent(trimmedTerm)}&page=1`,
         { signal: abortControllerRef.current.signal }
       );
-      const data = await response.json();
+      const data: TmdbResponse = await response.json();
 
-      const formattedMovies: Movie[] = data.results.map((movie: any) => ({
-        id: movie.id,
-        title: movie.title,
-        year: movie.release_date?.split("-")[0] || "N/A",
-        rating: toFiveStarScale(movie.vote_average),
-        posterUrl: movie.poster_path
-          ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-          : "/placeholder.svg",
-        genre: movie.genre_ids?.slice(0, 2).join(", ") || "N/A",
-      }));
+      const formattedMovies: Movie[] = (data.results ?? []).map(mapTmdbToMovie);
 
       // Salvar no cache
       searchCache.set(cacheKey, formattedMovies);

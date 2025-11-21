@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import MovieCard from "@/modules/movies/components/MovieCard";
 import HeroSection from "./components/HeroSection";
@@ -18,6 +18,29 @@ interface Movie {
   genre: string;
 }
 
+interface TmdbMovie {
+  id: number;
+  title: string;
+  release_date?: string;
+  vote_average?: number;
+  poster_path?: string | null;
+  genre_ids?: number[];
+}
+
+interface TmdbResponse {
+  results?: TmdbMovie[];
+}
+
+const formatMovies = (movies: TmdbMovie[]): Movie[] =>
+  movies.slice(0, 10).map((movie) => ({
+    id: movie.id,
+    title: movie.title,
+    year: movie.release_date?.split("-")[0] || "N/A",
+    rating: toFiveStarScale(movie.vote_average ?? 0),
+    posterUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : "/placeholder.svg",
+    genre: movie.genre_ids?.slice(0, 2).join(", ") || "N/A",
+  }));
+
 // Cache global para os filmes do dashboard
 let dashboardCache: {
   popular: Movie[];
@@ -32,33 +55,7 @@ const DashboardPage = () => {
   const [trendingMovies, setTrendingMovies] = useState<Movie[]>(dashboardCache?.trending || []);
   const [loading, setLoading] = useState(!dashboardCache);
 
-  useEffect(() => {
-    // Se já tem cache, não precisa carregar
-    if (dashboardCache) {
-      return;
-    }
-
-    // Sincronizar filmes com Supabase em background (sem bloquear a UI)
-    syncMoviesWithSupabase();
-    
-    // Buscar filmes da API do Spring Boot para exibição
-    fetchAllMovies();
-  }, []);
-
-  const formatMovies = (movies: any[]): Movie[] => {
-    return movies.slice(0, 10).map((movie: any) => ({
-      id: movie.id,
-      title: movie.title,
-      year: movie.release_date?.split("-")[0] || "N/A",
-      rating: toFiveStarScale(movie.vote_average),
-      posterUrl: movie.poster_path 
-        ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-        : "/placeholder.svg",
-      genre: movie.genre_ids?.slice(0, 2).join(", ") || "N/A"
-    }));
-  };
-
-  const fetchAllMovies = async () => {
+  const fetchAllMovies = useCallback(async () => {
     setLoading(true);
     try {
       const [popularRes, nowPlayingRes, trendingRes] = await Promise.all([
@@ -67,15 +64,15 @@ const DashboardPage = () => {
         fetch("http://localhost:8081/api/filmes/trending?page=1")
       ]);
 
-      const [popularData, nowPlayingData, trendingData] = await Promise.all([
+      const [popularData, nowPlayingData, trendingData]: TmdbResponse[] = await Promise.all([
         popularRes.json(),
         nowPlayingRes.json(),
         trendingRes.json()
       ]);
 
-      const popular = formatMovies(popularData.results || []);
-      const nowPlaying = formatMovies(nowPlayingData.results || []);
-      const trending = formatMovies(trendingData.results || []);
+      const popular = formatMovies(popularData.results ?? []);
+      const nowPlaying = formatMovies(nowPlayingData.results ?? []);
+      const trending = formatMovies(trendingData.results ?? []);
 
       // Salvar no cache global
       dashboardCache = { popular, nowPlaying, trending };
@@ -88,9 +85,9 @@ const DashboardPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const syncMoviesWithSupabase = async () => {
+  const syncMoviesWithSupabase = useCallback(async () => {
     try {
       const { data, error } = await supabase.functions.invoke('updateMovies', {
         body: {}
@@ -105,7 +102,20 @@ const DashboardPage = () => {
     } catch (error) {
       console.error("Erro ao sincronizar filmes:", error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    // Se já tem cache, não precisa carregar
+    if (dashboardCache) {
+      return;
+    }
+
+    // Sincronizar filmes com Supabase em background (sem bloquear a UI)
+    syncMoviesWithSupabase();
+    
+    // Buscar filmes da API do Spring Boot para exibição
+    fetchAllMovies();
+  }, [fetchAllMovies, syncMoviesWithSupabase]);
 
   const recentActivity = [
     { id: 1, text: "Você assistiu 'Interestelar'", time: "há 2 horas" },

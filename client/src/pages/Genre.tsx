@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import MovieCard from "@/modules/movies/components/MovieCard";
@@ -15,6 +15,50 @@ interface Movie {
   genre: string;
 }
 
+interface TmdbMovie {
+  id: number;
+  title: string;
+  release_date?: string;
+  vote_average?: number;
+  poster_path?: string | null;
+  genre_ids?: number[];
+}
+
+interface TmdbResponse {
+  results?: TmdbMovie[];
+}
+
+const mapTmdbToMovie = (movie: TmdbMovie): Movie => ({
+  id: movie.id,
+  title: movie.title,
+  year: movie.release_date?.split("-")[0] || "N/A",
+  rating: toFiveStarScale(movie.vote_average ?? 0),
+  posterUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : "/placeholder.svg",
+  genre: movie.genre_ids?.slice(0, 2).join(", ") || "N/A",
+});
+
+const GENRE_NAMES: Record<string, string> = {
+  "28": "Ação",
+  "12": "Aventura",
+  "16": "Animação",
+  "35": "Comédia",
+  "80": "Crime",
+  "99": "Documentário",
+  "18": "Drama",
+  "10751": "Família",
+  "14": "Fantasia",
+  "36": "História",
+  "27": "Terror",
+  "10402": "Música",
+  "9648": "Mistério",
+  "10749": "Romance",
+  "878": "Ficção Científica",
+  "10770": "Cinema TV",
+  "53": "Thriller",
+  "10752": "Guerra",
+  "37": "Faroeste",
+};
+
 const GenrePage = () => {
   const { genreId } = useParams<{ genreId: string }>();
   const navigate = useNavigate();
@@ -23,30 +67,16 @@ const GenrePage = () => {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
 
-  useEffect(() => {
-    if (genreId) {
-      fetchMoviesByGenre();
-    }
-  }, [genreId, page]);
-
-  const fetchMoviesByGenre = async () => {
+  const fetchMoviesByGenre = useCallback(async () => {
+    if (!genreId) return;
     setLoading(true);
     try {
       const response = await fetch(
         `http://localhost:8081/api/filmes/genre/${genreId}?page=${page}`
       );
-      const data = await response.json();
+      const data: TmdbResponse = await response.json();
 
-      const formattedMovies: Movie[] = data.results.map((movie: any) => ({
-        id: movie.id,
-        title: movie.title,
-        year: movie.release_date?.split("-")[0] || "N/A",
-        rating: toFiveStarScale(movie.vote_average),
-        posterUrl: movie.poster_path
-          ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-          : "/placeholder.svg",
-        genre: movie.genre_ids?.slice(0, 2).join(", ") || "N/A",
-      }));
+      const formattedMovies: Movie[] = (data.results ?? []).map(mapTmdbToMovie);
 
       setMovies(formattedMovies);
     } catch (error) {
@@ -54,33 +84,15 @@ const GenrePage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [genreId, page]);
 
-  const genreNames: { [key: string]: string } = {
-    "28": "Ação",
-    "12": "Aventura",
-    "16": "Animação",
-    "35": "Comédia",
-    "80": "Crime",
-    "99": "Documentário",
-    "18": "Drama",
-    "10751": "Família",
-    "14": "Fantasia",
-    "36": "História",
-    "27": "Terror",
-    "10402": "Música",
-    "9648": "Mistério",
-    "10749": "Romance",
-    "878": "Ficção Científica",
-    "10770": "Cinema TV",
-    "53": "Thriller",
-    "10752": "Guerra",
-    "37": "Faroeste",
-  };
+  useEffect(() => {
+    fetchMoviesByGenre();
+  }, [fetchMoviesByGenre]);
 
   useEffect(() => {
     if (genreId) {
-      setGenreName(genreNames[genreId] || "Gênero");
+      setGenreName(GENRE_NAMES[genreId] || "Gênero");
     }
   }, [genreId]);
 

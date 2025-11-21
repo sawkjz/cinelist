@@ -5,11 +5,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import Footer from "@/components/Footer";
+import ScrollToTop from "@/components/ScrollToTop";
+import ChatWidget from "@/components/ChatWidget";
 import Auth from "./modules/auth";
 import Dashboard from "./modules/dashboard";
 import MyList from "./modules/movies/pages/MyListPage";
 import Profile from "./modules/profile";
 import UserReviewsPage from "./modules/profile/pages/UserReviews";
+import PublicProfilePage from "./modules/profile/pages/PublicProfile";
 import Search from "./modules/movies/pages/SearchPage";
 import Calendar from "./modules/calendar";
 import MovieDetails from "./pages/MovieDetails";
@@ -27,6 +31,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <ScrollToTop />
+          <>
           <Routes>
             <Route path="/" element={<Navigate to="/auth" replace />} />
             <Route path="/auth" element={<Auth />} />
@@ -59,6 +65,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <UserReviewsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/user/:userId"
+              element={
+                <ProtectedRoute>
+                  <PublicProfilePage />
                 </ProtectedRoute>
               }
             />
@@ -113,6 +127,9 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <Footer />
+          <ChatWidget />
+          </>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

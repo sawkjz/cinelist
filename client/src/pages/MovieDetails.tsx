@@ -260,6 +260,11 @@ const formatReviewDateTime = (value?: string) => {
     );
   }
 
+  const shouldScrollReviews = reviews.length > 3;
+  const reviewListClasses = shouldScrollReviews
+    ? "space-y-4 max-h-[420px] overflow-y-auto pr-2 reviews-scroll"
+    : "space-y-4";
+
   if (!movie) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -282,7 +287,7 @@ const formatReviewDateTime = (value?: string) => {
         </div>
       )}
 
-      <div className="container mx-auto px-4 -mt-32 relative z-20">
+      <div className="container mx-auto px-4 -mt-32 pb-24 relative z-20">
         {/* Botão Voltar */}
         <Button
           variant="ghost"
@@ -461,7 +466,7 @@ const formatReviewDateTime = (value?: string) => {
           </Card>
 
           {/* Lista de Reviews */}
-          <div className="space-y-4">
+          <div className={reviewListClasses}>
             {reviews.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">
                 Ainda não há reviews para este filme. Seja o primeiro!
@@ -470,7 +475,13 @@ const formatReviewDateTime = (value?: string) => {
               reviews.map((review) => (
                 <Card key={review.id} className="p-6 bg-gradient-card border-border/50">
                   <div className="space-y-4">
-                    <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(user?.id === review.userId ? "/profile" : `/user/${review.userId}`)
+                      }
+                      className="flex items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 rounded-md"
+                    >
                       <Avatar className="h-12 w-12">
                         <AvatarImage
                           src={review.userAvatarUrl || undefined}
@@ -481,12 +492,14 @@ const formatReviewDateTime = (value?: string) => {
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-semibold">{review.userName}</p>
+                        <p className="font-semibold text-foreground hover:text-accent transition-colors">
+                          {review.userName}
+                        </p>
                         <p className="text-sm text-muted-foreground">
                           {formatReviewDateTime(review.createdAt)}
                         </p>
                       </div>
-                    </div>
+                    </button>
                     <div>
                       <ReviewStars
                         value={toFiveStarScale(review.rating)}

@@ -81,6 +81,24 @@ All colors MUST be HSL.
   stroke: currentColor;
 }
 
+.reviews-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--accent)) transparent;
+}
+
+.reviews-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.reviews-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.reviews-scroll::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--accent));
+  border-radius: 999px;
+}
+
 @keyframes star-burst {
   0% {
     transform: translate(-50%, -50%) scale(0.4);

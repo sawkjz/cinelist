@@ -1,5 +1,6 @@
 import heroImage from "@/assets/hero-cinema.jpg";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const HeroSection = () => {
   return (
@@ -18,8 +19,8 @@ const HeroSection = () => {
             Descubra, organize e compartilhe sua paixão por filmes. Acompanhe o que assistiu, 
             crie listas personalizadas e conecte-se com outros cinéfilos.
           </p>
-          <Button variant="hero" size="lg">
-            Explorar Filmes
+          <Button variant="hero" size="lg" asChild>
+            <Link to="/all-movies">Explorar Filmes</Link>
           </Button>
         </div>
       </div>

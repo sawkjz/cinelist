@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type { KeyboardEvent } from "react";
 import Navbar from "@/components/Navbar";
 import MovieCard from "@/modules/movies/components/MovieCard";
@@ -22,6 +22,28 @@ interface Movie {
   posterUrl: string;
   genre: string;
 }
+
+interface TmdbMovie {
+  id: number;
+  title: string;
+  release_date?: string;
+  vote_average?: number;
+  poster_path?: string | null;
+  genre_ids?: number[];
+}
+
+interface TmdbResponse {
+  results?: TmdbMovie[];
+}
+
+const mapTmdbToMovie = (movie: TmdbMovie): Movie => ({
+  id: movie.id,
+  title: movie.title,
+  year: movie.release_date?.split("-")[0] || "N/A",
+  rating: toFiveStarScale(movie.vote_average ?? 0),
+  posterUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : "/placeholder.svg",
+  genre: movie.genre_ids?.slice(0, 2).join(", ") || "N/A",
+});
 
 const genres = [
   { id: "all", name: "Todos os Gêneros" },
@@ -56,14 +78,7 @@ const AllMovies = () => {
   const [isSearchMode, setIsSearchMode] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (isSearchMode) {
-      return;
-    }
-    loadMovies();
-  }, [page, selectedGenre, isSearchMode]);
-
-  const loadMovies = async () => {
+  const loadMovies = useCallback(async () => {
     setLoading(true);
     try {
       const endpoint =
@@ -72,18 +87,9 @@ const AllMovies = () => {
           : `http://localhost:8081/api/filmes/genre/${selectedGenre}?page=${page}`;
 
       const response = await fetch(endpoint);
-      const data = await response.json();
+      const data: TmdbResponse = await response.json();
 
-      const formattedMovies: Movie[] = data.results.map((movie: any) => ({
-        id: movie.id,
-        title: movie.title,
-        year: movie.release_date?.split("-")[0] || "N/A",
-        rating: toFiveStarScale(movie.vote_average),
-        posterUrl: movie.poster_path
-          ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-          : "/placeholder.svg",
-        genre: movie.genre_ids?.slice(0, 2).join(", ") || "N/A",
-      }));
+      const formattedMovies: Movie[] = (data.results ?? []).map(mapTmdbToMovie);
 
       setMovies(formattedMovies);
     } catch (error) {
@@ -91,7 +97,14 @@ const AllMovies = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, selectedGenre]);
+
+  useEffect(() => {
+    if (isSearchMode) {
+      return;
+    }
+    loadMovies();
+  }, [isSearchMode, loadMovies]);
 
   const handleGenreChange = (value: string) => {
     setSelectedGenre(value);
@@ -125,18 +138,9 @@ const AllMovies = () => {
       const response = await fetch(
         `http://localhost:8081/api/filmes/search?query=${encodeURIComponent(term)}&page=1`
       );
-      const data = await response.json();
+      const data: TmdbResponse = await response.json();
 
-      const formattedMovies: Movie[] = data.results.map((movie: any) => ({
-        id: movie.id,
-        title: movie.title,
-        year: movie.release_date?.split("-")[0] || "N/A",
-        rating: toFiveStarScale(movie.vote_average),
-        posterUrl: movie.poster_path
-          ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-          : "/placeholder.svg",
-        genre: movie.genre_ids?.slice(0, 2).join(", ") || "N/A",
-      }));
+      const formattedMovies: Movie[] = (data.results ?? []).map(mapTmdbToMovie);
 
       setMovies(formattedMovies);
       setActiveSearchTerm(term);
