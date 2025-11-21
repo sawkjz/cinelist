@@ -203,7 +203,7 @@ const DashboardPage = () => {
               <path d="M17 7.5h4" />
               <path d="M17 16.5h4" />
             </svg>
-            Buscar novos filmes
+            Ver mais
           </button>
         </div>
       </main>
