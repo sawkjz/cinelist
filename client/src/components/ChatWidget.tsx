@@ -116,7 +116,7 @@ const ChatWidget = () => {
               />
               <button
                 type="submit"
-                className="absolute right-1 top-1 rounded-2xl px-3 py-1 text-xs border border-white/10 hover:border-white/40 transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-2xl px-3 py-1 text-xs border border-white/10 hover:border-white/40 transition-colors"
               >
                 <Send className="h-3.5 w-3.5" />
               </button>
