@@ -1,4 +1,4 @@
-import { useEffect, useState, CSSProperties } from "react";
+import { useEffect, useState, CSSProperties, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Star, ArrowLeft, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,33 +8,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { toFiveStarScale } from "@/utils/rating";
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8081";
-
-interface MovieDetails {
-  id: number;
-  title: string;
-  original_title: string;
-  overview: string;
-  poster_path: string;
-  backdrop_path: string;
-  release_date: string;
-  vote_average: number;
-  genres: { id: number; name: string }[];
-  runtime?: number;
-  budget?: number;
-}
-
-interface Review {
-  id: number;
-  usuarioId: number;
-  nomeUsuario: string;
-  avatarUrl?: string | null;
-  nota: number;
-  comentario: string;
-  dataCriacao: string;
-  dataAtualizacao?: string;
-}
+import ReviewStars from "@/components/ReviewStars";
+import { ReviewSupabaseService, MovieReview } from "@/services/ReviewSupabaseService";
+import {
+  getCachedMovieDetails,
+  getCachedMovieReviews,
+  prefetchMovieDetails,
+  prefetchMovieReviews,
+  invalidateMovieReviews,
+  type MovieDetailsData,
+} from "@/modules/movies/utils/movieCache";
 
 interface StarBurstParticle {
   id: string;
@@ -64,72 +47,67 @@ type StarParticleStyle = CSSProperties & {
 };
 
 // Cache global para detalhes de filmes
-const movieDetailsCache = new Map<string, MovieDetails>();
-const reviewsCache = new Map<string, Review[]>();
-
 const MovieDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [movie, setMovie] = useState<MovieDetails | null>(movieDetailsCache.get(id || "") || null);
-  const [reviews, setReviews] = useState<Review[]>(reviewsCache.get(id || "") || []);
-  const [loading, setLoading] = useState(!movieDetailsCache.has(id || ""));
+  const cacheKey = id || "";
+  const [movie, setMovie] = useState<MovieDetailsData | null>(() =>
+    cacheKey ? getCachedMovieDetails(cacheKey) || null : null
+  );
+  const [reviews, setReviews] = useState<MovieReview[]>(() =>
+    cacheKey ? getCachedMovieReviews(cacheKey) || [] : []
+  );
+  const [loading, setLoading] = useState(() => !(cacheKey && getCachedMovieDetails(cacheKey)));
   const [userRating, setUserRating] = useState(0);
   const [userComment, setUserComment] = useState("");
   const [hoveredStar, setHoveredStar] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const { backendUser } = useAuthContext();
+  const { user, backendUser } = useAuthContext();
   const [starBursts, setStarBursts] = useState<StarBurst[]>([]);
   const normalizedMovieRating = movie ? toFiveStarScale(movie.vote_average) : 0;
 
-  useEffect(() => {
-    if (id) {
-      // Verifica cache antes de fazer requisições
-      if (movieDetailsCache.has(id)) {
-        setMovie(movieDetailsCache.get(id)!);
-      } else {
-        fetchMovieDetails();
-      }
-      
-      if (reviewsCache.has(id)) {
-        setReviews(reviewsCache.get(id)!);
-      } else {
-        fetchReviews();
-      }
-    }
-  }, [id]);
-
-  const fetchMovieDetails = async () => {
+  const fetchMovieDetails = useCallback(async () => {
+    if (!id) return;
     try {
-      const response = await fetch(`${BACKEND_URL}/api/filmes/${id}`);
-      const data = await response.json();
+      const data = await prefetchMovieDetails(Number(id));
       setMovie(data);
-      // Salva no cache
-      if (id) {
-        movieDetailsCache.set(id, data);
-      }
     } catch (error) {
       console.error("Erro ao buscar detalhes:", error);
       toast.error("Erro ao carregar detalhes do filme");
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  const fetchReviews = async () => {
+  const fetchReviews = useCallback(async () => {
+    if (!id) return;
     try {
-      const response = await fetch(`${BACKEND_URL}/api/reviews/filme/${id}`);
-      if (response.ok) {
-        const data = await response.json();
-        setReviews(data);
-        // Salva no cache
-        if (id) {
-          reviewsCache.set(id, data);
-        }
-      }
+      const data = await prefetchMovieReviews(Number(id));
+      setReviews(data);
     } catch (error) {
-      console.error("Erro ao buscar reviews:", error);
+      console.error("Erro ao buscar reviews no Supabase:", error);
+      toast.error("Erro ao carregar reviews");
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    window.scrollTo(0, 0);
+    const cachedMovie = getCachedMovieDetails(id);
+    if (cachedMovie) {
+      setMovie(cachedMovie);
+      setLoading(false);
+    } else {
+      fetchMovieDetails();
+    }
+
+    const cachedReviews = getCachedMovieReviews(id);
+    if (cachedReviews) {
+      setReviews(cachedReviews);
+    } else {
+      fetchReviews();
+    }
+  }, [id, fetchMovieDetails, fetchReviews]);
 
   const handleAddToList = () => {
     toast.success("Filme adicionado à sua lista!");
@@ -171,42 +149,42 @@ const MovieDetails = () => {
       return;
     }
 
-    if (!backendUser?.id) {
+    if (!user?.id) {
       toast.error("Você precisa estar logado para avaliar");
+      return;
+    }
+
+    const numericId = Number(id);
+    if (!numericId || Number.isNaN(numericId)) {
+      toast.error("Não foi possível identificar o filme para salvar sua review.");
       return;
     }
 
     setSubmitting(true);
     try {
-      const reviewData = {
-        tmdbId: Number(id),
-        tituloFilme: movie?.title || "",
-        nota: userRating,
-        comentario: userComment || "",
-      };
-
-      const response = await fetch(`${BACKEND_URL}/api/reviews/usuario/${backendUser.id}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(reviewData),
+      await ReviewSupabaseService.upsertReview({
+        userId: user.id,
+        userName:
+          backendUser?.nome ||
+          user.user_metadata?.full_name ||
+          user.email ||
+          "Usuário CineList",
+        userAvatarUrl: backendUser?.avatarUrl ?? user.user_metadata?.avatar_url ?? undefined,
+        tmdbId: numericId,
+        movieTitle: movie?.title || movie?.original_title || "",
+        rating: userRating,
+        comment: userComment,
       });
 
-      if (response.ok) {
-        toast.success("Review adicionada com sucesso!");
-        setUserRating(0);
-        setUserComment("");
-        // Limpa o cache de reviews para forçar atualização
-        if (id) {
-          reviewsCache.delete(id);
-        }
-        fetchReviews();
-      } else {
-        toast.error("Erro ao adicionar review");
+      toast.success("Review adicionada com sucesso!");
+      setUserRating(0);
+      setUserComment("");
+      if (cacheKey) {
+        invalidateMovieReviews(cacheKey);
       }
+      fetchReviews();
     } catch (error) {
-      console.error("Erro ao submeter review:", error);
+      console.error("Erro ao submeter review no Supabase:", error);
       toast.error("Erro ao adicionar review");
     } finally {
       setSubmitting(false);
@@ -474,7 +452,7 @@ const formatReviewDateTime = (value?: string) => {
 
               <Button
                 onClick={handleSubmitReview}
-                disabled={submitting || userRating === 0 || !backendUser}
+                disabled={submitting || userRating === 0 || !user}
                 className="bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50"
               >
                 {submitting ? "Publicando..." : "Publicar Review"}
@@ -488,34 +466,39 @@ const formatReviewDateTime = (value?: string) => {
               <p className="text-muted-foreground text-center py-8">
                 Ainda não há reviews para este filme. Seja o primeiro!
               </p>
-            ) : (
+              ) : (
               reviews.map((review) => (
                 <Card key={review.id} className="p-6 bg-gradient-card border-border/50">
-                  <div className="flex items-start justify-between mb-3">
+                  <div className="space-y-4">
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-11 w-11">
-                        <AvatarImage src={review.avatarUrl || undefined} alt={review.nomeUsuario} />
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage
+                          src={review.userAvatarUrl || undefined}
+                          alt={review.userName}
+                        />
                         <AvatarFallback className="bg-accent/20 text-accent">
-                          {getInitials(review.nomeUsuario)}
+                          {getInitials(review.userName)}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-semibold">{review.nomeUsuario}</p>
+                        <p className="font-semibold">{review.userName}</p>
                         <p className="text-sm text-muted-foreground">
-                          {formatReviewDateTime(review.dataCriacao)}
+                          {formatReviewDateTime(review.createdAt)}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Star className="h-5 w-5 fill-yellow-500 text-yellow-500" />
-                      <span className="font-semibold">
-                        {toFiveStarScale(review.nota).toFixed(1)}/5
-                      </span>
+                    <div>
+                      <ReviewStars
+                        value={toFiveStarScale(review.rating)}
+                        size="lg"
+                        showValue={false}
+                        className="flex-wrap"
+                      />
                     </div>
+                    {review.comment && (
+                      <p className="text-muted-foreground leading-relaxed">{review.comment}</p>
+                    )}
                   </div>
-                  {review.comentario && (
-                    <p className="text-muted-foreground leading-relaxed">{review.comentario}</p>
-                  )}
                 </Card>
               ))
             )}

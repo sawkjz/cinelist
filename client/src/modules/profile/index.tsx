@@ -11,12 +11,11 @@ import { Trophy, Film, Star, Calendar, Upload, Edit2, Save } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuthContext } from "@/contexts/AuthContext";
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8081";
+import { ReviewSupabaseService } from "@/services/ReviewSupabaseService";
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { backendUser } = useAuthContext();
+  const { user } = useAuthContext();
   const [userEmail, setUserEmail] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
   const [userBio, setUserBio] = useState<string>("");
@@ -31,26 +30,22 @@ const Profile = () => {
   }, []);
 
   useEffect(() => {
-    if (!backendUser?.id) {
+    if (!user?.id) {
       setReviewsCount(null);
       return;
     }
 
     const fetchReviewCount = async () => {
       try {
-        const response = await fetch(`${BACKEND_URL}/api/reviews/usuario/${backendUser.id}`);
-        if (!response.ok) {
-          throw new Error("Falha ao buscar avaliações");
-        }
-        const data = await response.json();
-        setReviewsCount(Array.isArray(data) ? data.length : 0);
+        const total = await ReviewSupabaseService.countByUser(user.id);
+        setReviewsCount(total);
       } catch (error) {
         console.error("Erro ao buscar contagem de avaliações:", error);
       }
     };
 
     fetchReviewCount();
-  }, [backendUser]);
+  }, [user]);
 
   const loadUserProfile = async () => {
     try {

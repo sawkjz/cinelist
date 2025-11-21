@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Star, Plus, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import AddToListModal from "@/modules/dashboard/components/AddToListModal";
 import { toFiveStarScale } from "@/utils/rating";
+import { prefetchMovieDetails, prefetchMovieReviews } from "@/modules/movies/utils/movieCache";
 
 interface MovieCardProps {
   id: number;
@@ -20,6 +21,11 @@ const MovieCard = ({ id, title, year, rating, posterUrl, genre }: MovieCardProps
   const [showModal, setShowModal] = useState(false);
   const normalizedRating = toFiveStarScale(rating);
 
+  const handlePrefetch = useCallback(() => {
+    prefetchMovieDetails(id);
+    prefetchMovieReviews(id);
+  }, [id]);
+
   const handleAddToList = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -30,6 +36,7 @@ const MovieCard = ({ id, title, year, rating, posterUrl, genre }: MovieCardProps
   const handleViewInfo = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    handlePrefetch();
     navigate(`/movie/${id}`);
   };
 
@@ -39,6 +46,7 @@ const MovieCard = ({ id, title, year, rating, posterUrl, genre }: MovieCardProps
       e.stopPropagation();
       return;
     }
+    handlePrefetch();
     navigate(`/movie/${id}`);
   };
 
@@ -47,6 +55,9 @@ const MovieCard = ({ id, title, year, rating, posterUrl, genre }: MovieCardProps
     <Card 
       className="group relative overflow-hidden bg-gradient-card border-border/50 hover:border-accent/50 transition-all duration-300 hover:shadow-glow cursor-pointer"
       onClick={handleCardClick}
+      onMouseEnter={handlePrefetch}
+      onFocus={handlePrefetch}
+      onTouchStart={handlePrefetch}
     >
       <div className="aspect-[2/3] relative overflow-hidden">
         <img

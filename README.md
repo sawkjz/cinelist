@@ -45,6 +45,27 @@ Aplicação full-stack para catalogar filmes, consumir dados do TMDB e gerenciar
    ```
    Depois disso você pode invocar a função via CLI ou frontend para manter a tabela atualizada.
 
+## Banco de reviews no Supabase
+Para que os comentários feitos na tela de detalhes do filme fiquem salvos mesmo após reinstalar o projeto, crie a tabela abaixo no seu Supabase (SQL Editor):
+
+```sql
+create table if not exists public.movie_reviews (
+  id bigserial primary key,
+  user_id uuid not null,
+  user_name text not null,
+  user_avatar_url text,
+  tmdb_id bigint not null,
+  movie_title text not null,
+  rating numeric(2,1) not null check (rating between 0 and 5),
+  comment text,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  constraint movie_reviews_user_tmdb_unique unique (user_id, tmdb_id)
+);
+```
+
+> Dica: restrinja o acesso a essa tabela para apenas usuários autenticados no Supabase Dashboard (Auth → Policies) para que cada review esteja atrelada a um login válido.
+
 ## Scripts úteis
 - `./setup-mac-linux.sh` ou `setup-windows.bat`: instaladores automatizados das dependências e variáveis básicas (ajustar antes de rodar).
 - `./start-all.bat`: inicia backend e frontend juntos no Windows.
