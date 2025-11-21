@@ -7,19 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Star, ArrowLeft, MessageCircle, Film } from "lucide-react";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { toFiveStarScale } from "@/utils/rating";
+import ReviewStars from "@/components/ReviewStars";
+import { ReviewSupabaseService, MovieReview } from "@/services/ReviewSupabaseService";
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8081";
-
-interface Review {
-  id: number;
-  usuarioId: number;
-  tmdbId: number;
-  tituloFilme: string;
-  nota: number;
-  comentario: string;
-  dataCriacao: string;
-  dataAtualizacao?: string;
-}
+type Review = MovieReview;
 
 type CategorizedReview = Review & { normalizedScore: number };
 type ReviewCategoryWithItems = ReviewCategory & { items: CategorizedReview[] };
@@ -88,23 +79,19 @@ const formatReviewDateTime = (value?: string) => {
 
 const UserReviewsPage = () => {
   const navigate = useNavigate();
-  const { backendUser } = useAuthContext();
+  const { user } = useAuthContext();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!backendUser?.id) return;
+    if (!user?.id) return;
 
     const fetchReviews = async () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`${BACKEND_URL}/api/reviews/usuario/${backendUser.id}`);
-        if (!response.ok) {
-          throw new Error("Não foi possível carregar suas avaliações.");
-        }
-        const data = await response.json();
+        const data = await ReviewSupabaseService.listByUser(user.id);
         setReviews(data);
       } catch (err) {
         console.error("Erro ao carregar avaliações:", err);
@@ -115,7 +102,7 @@ const UserReviewsPage = () => {
     };
 
     fetchReviews();
-  }, [backendUser]);
+  }, [user]);
 
   const groupedReviews = useMemo<ReviewCategoryWithItems[]>(() => {
     const groups: ReviewCategoryWithItems[] = [...REVIEW_CATEGORIES, FALLBACK_CATEGORY].map(
@@ -126,7 +113,7 @@ const UserReviewsPage = () => {
     );
 
     reviews.forEach((review) => {
-      const normalizedScore = toFiveStarScale(review.nota);
+      const normalizedScore = toFiveStarScale(review.rating);
       const category =
         REVIEW_CATEGORIES.find((cat) => cat.match(normalizedScore)) ?? FALLBACK_CATEGORY;
       const targetGroup = groups.find((group) => group.id === category.id);
@@ -140,7 +127,7 @@ const UserReviewsPage = () => {
 
   const totalReviews = reviews.length;
 
-  if (!backendUser) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -239,27 +226,22 @@ const UserReviewsPage = () => {
               ) : (
                 <div className="space-y-4">
                   {category.items
-                    .sort((a, b) => new Date(b.dataCriacao).getTime() - new Date(a.dataCriacao).getTime())
+                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                     .map((review) => (
                       <Card key={review.id} className="p-4 bg-gradient-to-br from-background to-muted/40 border-border/50">
                         <div className="flex flex-wrap items-start justify-between gap-4">
                           <div>
-                            <p className="text-lg font-semibold text-foreground">{review.tituloFilme}</p>
+                            <p className="text-lg font-semibold text-foreground">{review.movieTitle}</p>
                             <p className="text-sm text-muted-foreground">
-                              Publicado em {formatReviewDateTime(review.dataCriacao)}
+                              Publicado em {formatReviewDateTime(review.createdAt)}
                             </p>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
-                            <span className="text-base font-semibold">
-                              {review.normalizedScore.toFixed(1)}/5
-                            </span>
-                          </div>
+                          <ReviewStars value={review.normalizedScore} size="lg" />
                         </div>
-                        {review.comentario && (
+                        {review.comment && (
                           <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
                             <MessageCircle className="h-4 w-4 inline mr-1 text-accent" />
-                            {review.comentario}
+                            {review.comment}
                           </p>
                         )}
                         <div className="mt-4 flex flex-wrap gap-2">
