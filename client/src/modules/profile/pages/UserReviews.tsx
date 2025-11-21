@@ -148,7 +148,7 @@ const UserReviewsPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="container mx-auto px-4 pt-24 pb-12 space-y-6">
+      <main className="container mx-auto px-4 pt-24 pb-24 space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-sm text-muted-foreground uppercase tracking-wide">Perfil</p>
@@ -251,9 +251,6 @@ const UserReviewsPage = () => {
                           >
                             Ver informações do filme
                           </Button>
-                          <Badge variant="outline" className="text-xs">
-                            ID TMDB #{review.tmdbId}
-                          </Badge>
                         </div>
                       </Card>
                     ))}

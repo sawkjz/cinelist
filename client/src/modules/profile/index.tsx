@@ -91,8 +91,9 @@ const Profile = () => {
 
       toast.success("Perfil atualizado com sucesso!");
       setIsEditing(false);
-    } catch (error: any) {
-      toast.error("Erro ao atualizar perfil: " + error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Erro ao atualizar perfil";
+      toast.error(`Erro ao atualizar perfil: ${message}`);
     }
   };
 
@@ -156,8 +157,9 @@ const Profile = () => {
 
       setAvatarUrl(newAvatarUrl);
       toast.success("Foto atualizada com sucesso!");
-    } catch (error: any) {
-      toast.error("Erro ao fazer upload: " + error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Erro ao fazer upload";
+      toast.error(`Erro ao fazer upload: ${message}`);
     } finally {
       setUploading(false);
     }
