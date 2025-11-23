@@ -38,7 +38,7 @@ const AddToListModal = ({ isOpen, onClose, movie, usuarioId }: AddToListModalPro
       console.log("📂 [AddToListModal] Modal aberto para o filme:", movie.title);
       carregarListas();
     }
-  }, [isOpen]);
+  }, [isOpen, movie.title]);
 
   const carregarListas = async () => {
     console.log("🔄 [AddToListModal] Carregando listas do Supabase");
@@ -104,9 +104,10 @@ const AddToListModal = ({ isOpen, onClose, movie, usuarioId }: AddToListModalPro
       toast.success("Filme adicionado à lista!");
       onClose();
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("❌ [AddToListModal] Erro ao adicionar filme:", error);
-      toast.error(error.message || "Erro ao adicionar filme");
+      const message = error instanceof Error ? error.message : "Erro ao adicionar filme";
+      toast.error(message);
     } finally {
       setAdicionando(null);
     }

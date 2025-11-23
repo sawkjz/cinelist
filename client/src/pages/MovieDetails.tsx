@@ -1,131 +1,146 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, CSSProperties, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Star, ArrowLeft, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuthContext } from "@/contexts/AuthContext";
+import { toFiveStarScale } from "@/utils/rating";
+import ReviewStars from "@/components/ReviewStars";
+import { ReviewSupabaseService, MovieReview } from "@/services/ReviewSupabaseService";
+import {
+  getCachedMovieDetails,
+  getCachedMovieReviews,
+  prefetchMovieDetails,
+  prefetchMovieReviews,
+  invalidateMovieReviews,
+  type MovieDetailsData,
+} from "@/modules/movies/utils/movieCache";
 
-interface MovieDetails {
-  id: number;
-  title: string;
-  original_title: string;
-  overview: string;
-  poster_path: string;
-  backdrop_path: string;
-  release_date: string;
-  vote_average: number;
-  genres: { id: number; name: string }[];
-  runtime?: number;
-  budget?: number;
+interface StarBurstParticle {
+  id: string;
+  x: number;
+  y: number;
+  fall: number;
+  delay: number;
+  size: number;
+  scaleMid: number;
+  scaleEnd: number;
+  duration: number;
+  opacity: number;
 }
 
-interface Review {
+interface StarBurst {
   id: number;
-  usuarioId: number;
-  nomeUsuario: string;
-  nota: number;
-  comentario: string;
-  dataCriacao: string;
+  particles: StarBurstParticle[];
 }
+
+type StarParticleStyle = CSSProperties & {
+  "--x"?: string;
+  "--y"?: string;
+  "--delay"?: string;
+  "--fall"?: string;
+  "--scale-mid"?: string;
+  "--scale-end"?: string;
+};
 
 // Cache global para detalhes de filmes
-const movieDetailsCache = new Map<string, MovieDetails>();
-const reviewsCache = new Map<string, Review[]>();
-
 const MovieDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [movie, setMovie] = useState<MovieDetails | null>(movieDetailsCache.get(id || "") || null);
-  const [reviews, setReviews] = useState<Review[]>(reviewsCache.get(id || "") || []);
-  const [loading, setLoading] = useState(!movieDetailsCache.has(id || ""));
+  const cacheKey = id || "";
+  const [movie, setMovie] = useState<MovieDetailsData | null>(() =>
+    cacheKey ? getCachedMovieDetails(cacheKey) || null : null
+  );
+  const [reviews, setReviews] = useState<MovieReview[]>(() =>
+    cacheKey ? getCachedMovieReviews(cacheKey) || [] : []
+  );
+  const [loading, setLoading] = useState(() => !(cacheKey && getCachedMovieDetails(cacheKey)));
   const [userRating, setUserRating] = useState(0);
   const [userComment, setUserComment] = useState("");
   const [hoveredStar, setHoveredStar] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const { user, backendUser } = useAuthContext();
+  const [starBursts, setStarBursts] = useState<StarBurst[]>([]);
+  const normalizedMovieRating = movie ? toFiveStarScale(movie.vote_average) : 0;
 
-  useEffect(() => {
-    loadCurrentUser();
-    if (id) {
-      // Verifica cache antes de fazer requisições
-      if (movieDetailsCache.has(id)) {
-        setMovie(movieDetailsCache.get(id)!);
-      } else {
-        fetchMovieDetails();
-      }
-      
-      if (reviewsCache.has(id)) {
-        setReviews(reviewsCache.get(id)!);
-      } else {
-        fetchReviews();
-      }
-    }
-  }, [id]);
-
-  const loadCurrentUser = async () => {
+  const fetchMovieDetails = useCallback(async () => {
+    if (!id) return;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // Extract user ID from Supabase metadata or email
-        // For now, using a simple hash of email as userId
-        // You may want to store a backend_user_id in Supabase profiles table
-        const userId = Math.abs(hashCode(user.email || ""));
-        setCurrentUserId(userId);
-      }
-    } catch (error) {
-      console.error("Erro ao carregar usuário:", error);
-    }
-  };
-
-  // Simple hash function to generate consistent user ID from email
-  const hashCode = (str: string): number => {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return hash;
-  };
-
-  const fetchMovieDetails = async () => {
-    try {
-      const response = await fetch(`http://localhost:8081/api/filmes/${id}`);
-      const data = await response.json();
+      const data = await prefetchMovieDetails(Number(id));
       setMovie(data);
-      // Salva no cache
-      if (id) {
-        movieDetailsCache.set(id, data);
-      }
     } catch (error) {
       console.error("Erro ao buscar detalhes:", error);
       toast.error("Erro ao carregar detalhes do filme");
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  const fetchReviews = async () => {
+  const fetchReviews = useCallback(async () => {
+    if (!id) return;
     try {
-      const response = await fetch(`http://localhost:8081/api/reviews/filme/${id}`);
-      if (response.ok) {
-        const data = await response.json();
-        setReviews(data);
-        // Salva no cache
-        if (id) {
-          reviewsCache.set(id, data);
-        }
-      }
+      const data = await prefetchMovieReviews(Number(id));
+      setReviews(data);
     } catch (error) {
-      console.error("Erro ao buscar reviews:", error);
+      console.error("Erro ao buscar reviews no Supabase:", error);
+      toast.error("Erro ao carregar reviews");
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    window.scrollTo(0, 0);
+    const cachedMovie = getCachedMovieDetails(id);
+    if (cachedMovie) {
+      setMovie(cachedMovie);
+      setLoading(false);
+    } else {
+      fetchMovieDetails();
+    }
+
+    const cachedReviews = getCachedMovieReviews(id);
+    if (cachedReviews) {
+      setReviews(cachedReviews);
+    } else {
+      fetchReviews();
+    }
+  }, [id, fetchMovieDetails, fetchReviews]);
 
   const handleAddToList = () => {
     toast.success("Filme adicionado à sua lista!");
     // TODO: Implementar adição real à lista do usuário
+  };
+
+  const triggerPerfectScoreBurst = () => {
+    const burstId = Date.now();
+    const particles: StarBurstParticle[] = Array.from({ length: 12 }).map((_, index) => {
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 80 + Math.random() * 80;
+      const x = Math.cos(angle) * distance;
+      const y = Math.sin(angle) * distance;
+
+      return {
+        id: `${burstId}-${index}`,
+        x,
+        y,
+        fall: 40 + Math.random() * 60,
+        delay: Math.random() * 120,
+        size: 8 + Math.random() * 6,
+        scaleMid: 0.95 + Math.random() * 0.25,
+        scaleEnd: 0.35 + Math.random() * 0.2,
+        duration: 850 + Math.random() * 300,
+        opacity: 0.8 + Math.random() * 0.2,
+      };
+    });
+
+    setStarBursts((prev) => [...prev, { id: burstId, particles }]);
+
+    window.setTimeout(() => {
+      setStarBursts((prev) => prev.filter((burst) => burst.id !== burstId));
+    }, 1400);
   };
 
   const handleSubmitReview = async () => {
@@ -134,42 +149,42 @@ const MovieDetails = () => {
       return;
     }
 
-    if (!currentUserId) {
+    if (!user?.id) {
       toast.error("Você precisa estar logado para avaliar");
+      return;
+    }
+
+    const numericId = Number(id);
+    if (!numericId || Number.isNaN(numericId)) {
+      toast.error("Não foi possível identificar o filme para salvar sua review.");
       return;
     }
 
     setSubmitting(true);
     try {
-      const reviewData = {
-        tmdbId: Number(id),
-        tituloFilme: movie?.title || "",
-        nota: userRating,
-        comentario: userComment || "",
-      };
-
-      const response = await fetch(`http://localhost:8081/api/reviews/usuario/${currentUserId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(reviewData),
+      await ReviewSupabaseService.upsertReview({
+        userId: user.id,
+        userName:
+          backendUser?.nome ||
+          user.user_metadata?.full_name ||
+          user.email ||
+          "Usuário CineList",
+        userAvatarUrl: backendUser?.avatarUrl ?? user.user_metadata?.avatar_url ?? undefined,
+        tmdbId: numericId,
+        movieTitle: movie?.title || movie?.original_title || "",
+        rating: userRating,
+        comment: userComment,
       });
 
-      if (response.ok) {
-        toast.success("Review adicionada com sucesso!");
-        setUserRating(0);
-        setUserComment("");
-        // Limpa o cache de reviews para forçar atualização
-        if (id) {
-          reviewsCache.delete(id);
-        }
-        fetchReviews();
-      } else {
-        toast.error("Erro ao adicionar review");
+      toast.success("Review adicionada com sucesso!");
+      setUserRating(0);
+      setUserComment("");
+      if (cacheKey) {
+        invalidateMovieReviews(cacheKey);
       }
+      fetchReviews();
     } catch (error) {
-      console.error("Erro ao submeter review:", error);
+      console.error("Erro ao submeter review no Supabase:", error);
       toast.error("Erro ao adicionar review");
     } finally {
       setSubmitting(false);
@@ -177,6 +192,33 @@ const MovieDetails = () => {
   };
 
   const imageBaseUrl = "https://image.tmdb.org/t/p";
+
+const getInitials = (value?: string | null) => {
+  if (!value) return "U";
+  const parts = value.trim().split(" ").filter(Boolean);
+  if (parts.length === 0) return "U";
+  const initials = parts.slice(0, 2).map((part) => part[0]?.toUpperCase() || "").join("");
+  return initials || "U";
+};
+
+const formatReviewDateTime = (value?: string) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const formattedDate = date.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+
+  const formattedTime = date.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  return `${formattedDate} às ${formattedTime}`;
+};
 
   if (loading) {
     return (
@@ -218,6 +260,11 @@ const MovieDetails = () => {
     );
   }
 
+  const shouldScrollReviews = reviews.length > 3;
+  const reviewListClasses = shouldScrollReviews
+    ? "space-y-4 max-h-[420px] overflow-y-auto pr-2 reviews-scroll"
+    : "space-y-4";
+
   if (!movie) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -240,7 +287,7 @@ const MovieDetails = () => {
         </div>
       )}
 
-      <div className="container mx-auto px-4 -mt-32 relative z-20">
+      <div className="container mx-auto px-4 -mt-32 pb-24 relative z-20">
         {/* Botão Voltar */}
         <Button
           variant="ghost"
@@ -280,7 +327,10 @@ const MovieDetails = () => {
             <div className="flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-1">
                 <Star className="h-5 w-5 fill-yellow-500 text-yellow-500" />
-                <span className="font-semibold">{movie.vote_average.toFixed(1)}</span>
+                <span className="font-semibold">
+                  {normalizedMovieRating.toFixed(1)}
+                </span>
+                <span className="text-xs text-muted-foreground">/5</span>
               </div>
               <span className="text-muted-foreground">{movie.release_date?.split("-")[0]}</span>
               {movie.runtime && (
@@ -317,26 +367,80 @@ const MovieDetails = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Sua nota</label>
-                <div className="flex gap-2">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
-                    <button
-                      key={star}
-                      onClick={() => setUserRating(star)}
-                      onMouseEnter={() => setHoveredStar(star)}
-                      onMouseLeave={() => setHoveredStar(0)}
-                      className="transition-transform hover:scale-110"
-                    >
-                      <Star
-                        className={`h-6 w-6 ${
-                          star <= (hoveredStar || userRating)
-                            ? "fill-yellow-500 text-yellow-500"
-                            : "text-muted-foreground"
-                        }`}
-                      />
-                    </button>
-                  ))}
+                <div className="flex items-center">
+                  <div className="relative inline-flex">
+                    <div className="flex gap-2">
+                      {[1, 2, 3, 4, 5].map((star) => {
+                        const button = (
+                          <button
+                            onClick={() => {
+                              setUserRating(star);
+                              if (star === 5) {
+                                triggerPerfectScoreBurst();
+                              }
+                            }}
+                            onMouseEnter={() => setHoveredStar(star)}
+                            onMouseLeave={() => setHoveredStar(0)}
+                            className="transition-transform hover:scale-110"
+                          >
+                            <Star
+                              className={`h-6 w-6 ${
+                                star <= (hoveredStar || userRating)
+                                  ? "fill-yellow-500 text-yellow-500"
+                                  : "text-muted-foreground"
+                              }`}
+                            />
+                          </button>
+                        );
+
+                        if (star === 5) {
+                          return (
+                            <div key={star} className="relative flex">
+                              {button}
+                              {starBursts.map((burst) => (
+                                <div
+                                  key={burst.id}
+                                  className="pointer-events-none absolute inset-0 flex items-center justify-center"
+                                >
+                                  {burst.particles.map((particle) => {
+                                    const style: StarParticleStyle = {
+                                      "--x": `${particle.x}px`,
+                                      "--y": `${particle.y}px`,
+                                      "--fall": `${particle.fall}px`,
+                                      "--delay": `${particle.delay}ms`,
+                                      "--scale-mid": `${particle.scaleMid}`,
+                                      "--scale-end": `${particle.scaleEnd}`,
+                                      width: `${particle.size}px`,
+                                      height: `${particle.size}px`,
+                                      opacity: particle.opacity,
+                                      animationDuration: `${particle.duration}ms`,
+                                    };
+
+                                    return (
+                                      <Star
+                                        key={particle.id}
+                                        className="star-burst-particle"
+                                        style={style}
+                                      />
+                                    );
+                                  })}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div key={star} className="flex">
+                            {button}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   {userRating > 0 && (
-                    <span className="ml-2 font-semibold text-accent">{userRating}/10</span>
+                    <span className="ml-3 font-semibold text-accent">{userRating}/5</span>
                   )}
                 </div>
               </div>
@@ -353,7 +457,7 @@ const MovieDetails = () => {
 
               <Button
                 onClick={handleSubmitReview}
-                disabled={submitting || userRating === 0}
+                disabled={submitting || userRating === 0 || !user}
                 className="bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50"
               >
                 {submitting ? "Publicando..." : "Publicar Review"}
@@ -362,29 +466,52 @@ const MovieDetails = () => {
           </Card>
 
           {/* Lista de Reviews */}
-          <div className="space-y-4">
+          <div className={reviewListClasses}>
             {reviews.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">
                 Ainda não há reviews para este filme. Seja o primeiro!
               </p>
-            ) : (
+              ) : (
               reviews.map((review) => (
                 <Card key={review.id} className="p-6 bg-gradient-card border-border/50">
-                  <div className="flex items-start justify-between mb-3">
+                  <div className="space-y-4">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(user?.id === review.userId ? "/profile" : `/user/${review.userId}`)
+                      }
+                      className="flex items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 rounded-md"
+                    >
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage
+                          src={review.userAvatarUrl || undefined}
+                          alt={review.userName}
+                        />
+                        <AvatarFallback className="bg-accent/20 text-accent">
+                          {getInitials(review.userName)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-semibold text-foreground hover:text-accent transition-colors">
+                          {review.userName}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatReviewDateTime(review.createdAt)}
+                        </p>
+                      </div>
+                    </button>
                     <div>
-                      <p className="font-semibold">{review.nomeUsuario}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(review.dataCriacao).toLocaleDateString("pt-BR")}
-                      </p>
+                      <ReviewStars
+                        value={toFiveStarScale(review.rating)}
+                        size="lg"
+                        showValue={false}
+                        className="flex-wrap"
+                      />
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Star className="h-5 w-5 fill-yellow-500 text-yellow-500" />
-                      <span className="font-semibold">{review.nota}/10</span>
-                    </div>
+                    {review.comment && (
+                      <p className="text-muted-foreground leading-relaxed">{review.comment}</p>
+                    )}
                   </div>
-                  {review.comentario && (
-                    <p className="text-muted-foreground leading-relaxed">{review.comentario}</p>
-                  )}
                 </Card>
               ))
             )}

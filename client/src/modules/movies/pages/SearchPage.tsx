@@ -4,6 +4,7 @@ import MovieCard from "../components/MovieCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search as SearchIcon } from "lucide-react";
+import { toFiveStarScale } from "@/utils/rating";
 
 interface Movie {
   id: number;
@@ -13,6 +14,28 @@ interface Movie {
   posterUrl: string;
   genre: string;
 }
+
+interface TmdbMovie {
+  id: number;
+  title: string;
+  release_date?: string;
+  vote_average?: number;
+  poster_path?: string | null;
+  genre_ids?: number[];
+}
+
+interface TmdbResponse {
+  results?: TmdbMovie[];
+}
+
+const mapTmdbToMovie = (movie: TmdbMovie): Movie => ({
+  id: movie.id,
+  title: movie.title,
+  year: movie.release_date?.split("-")[0] || "N/A",
+  rating: toFiveStarScale(movie.vote_average ?? 0),
+  posterUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : "/placeholder.svg",
+  genre: movie.genre_ids?.slice(0, 2).join(", ") || "N/A",
+});
 
 // Cache de buscas em memória
 const searchCache = new Map<string, Movie[]>();
@@ -40,18 +63,9 @@ const SearchPage = () => {
   const loadSuggestions = async () => {
     try {
       const response = await fetch("http://localhost:8081/api/filmes/trending?page=1");
-      const data = await response.json();
+      const data: TmdbResponse = await response.json();
       
-      const formattedMovies: Movie[] = data.results.slice(0, 10).map((movie: any) => ({
-        id: movie.id,
-        title: movie.title,
-        year: movie.release_date?.split("-")[0] || "N/A",
-        rating: movie.vote_average || 0,
-        posterUrl: movie.poster_path 
-          ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-          : "/placeholder.svg",
-        genre: movie.genre_ids?.slice(0, 2).join(", ") || "N/A"
-      }));
+      const formattedMovies: Movie[] = (data.results ?? []).slice(0, 10).map(mapTmdbToMovie);
       
       suggestionsCache = formattedMovies; // Salvar no cache
       setSuggestions(formattedMovies);
@@ -63,7 +77,22 @@ const SearchPage = () => {
   };
 
   const handleSearch = async () => {
-    if (!searchTerm.trim()) return;
+    const trimmedTerm = searchTerm.trim();
+
+    if (!trimmedTerm) {
+      setSearched(false);
+      setMovies([]);
+
+      if (!suggestions.length && !loadingSuggestions) {
+        if (suggestionsCache) {
+          setSuggestions(suggestionsCache);
+        } else {
+          setLoadingSuggestions(true);
+          loadSuggestions();
+        }
+      }
+      return;
+    }
 
     // Cancelar requisição anterior se existir
     if (abortControllerRef.current) {
@@ -71,7 +100,7 @@ const SearchPage = () => {
     }
 
     // Verificar cache primeiro
-    const cacheKey = searchTerm.toLowerCase().trim();
+    const cacheKey = trimmedTerm.toLowerCase();
     if (searchCache.has(cacheKey)) {
       setMovies(searchCache.get(cacheKey)!);
       setSearched(true);
@@ -86,21 +115,12 @@ const SearchPage = () => {
 
     try {
       const response = await fetch(
-        `http://localhost:8081/api/filmes/search?query=${encodeURIComponent(searchTerm)}&page=1`,
+        `http://localhost:8081/api/filmes/search?query=${encodeURIComponent(trimmedTerm)}&page=1`,
         { signal: abortControllerRef.current.signal }
       );
-      const data = await response.json();
+      const data: TmdbResponse = await response.json();
 
-      const formattedMovies: Movie[] = data.results.map((movie: any) => ({
-        id: movie.id,
-        title: movie.title,
-        year: movie.release_date?.split("-")[0] || "N/A",
-        rating: movie.vote_average || 0,
-        posterUrl: movie.poster_path
-          ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-          : "/placeholder.svg",
-        genre: movie.genre_ids?.slice(0, 2).join(", ") || "N/A",
-      }));
+      const formattedMovies: Movie[] = (data.results ?? []).map(mapTmdbToMovie);
 
       // Salvar no cache
       searchCache.set(cacheKey, formattedMovies);

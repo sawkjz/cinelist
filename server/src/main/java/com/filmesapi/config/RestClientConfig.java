@@ -15,7 +15,6 @@ public class RestClientConfig {
     private String tmdbApiKey;
 
     @Bean
-    @SuppressWarnings("null")
     public WebClient tmdbWebClient() {
         return WebClient.builder()
                 .baseUrl(tmdbBaseUrl != null ? tmdbBaseUrl : "")

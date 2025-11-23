@@ -6,6 +6,7 @@ public class ReviewResponse {
     public Long id;
     public Long usuarioId;
     public String nomeUsuario;
+    public String avatarUrl;
     public Long tmdbId;
     public String tituloFilme;
     public Double nota;
@@ -15,9 +16,9 @@ public class ReviewResponse {
     
     public ReviewResponse() {}
     
-    public ReviewResponse(Long id, Long usuarioId, String nomeUsuario, Long tmdbId, 
-                         String tituloFilme, Double nota, String comentario, 
-                         LocalDateTime dataCriacao, LocalDateTime dataAtualizacao) {
+    public ReviewResponse(Long id, Long usuarioId, String nomeUsuario, Long tmdbId,
+                         String tituloFilme, Double nota, String comentario,
+                         LocalDateTime dataCriacao, LocalDateTime dataAtualizacao, String avatarUrl) {
         this.id = id;
         this.usuarioId = usuarioId;
         this.nomeUsuario = nomeUsuario;
@@ -27,5 +28,6 @@ public class ReviewResponse {
         this.comentario = comentario;
         this.dataCriacao = dataCriacao;
         this.dataAtualizacao = dataAtualizacao;
+        this.avatarUrl = avatarUrl;
     }
 }

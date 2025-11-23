@@ -90,6 +90,45 @@ export type Database = {
           }
         ]
       }
+      movie_reviews: {
+        Row: {
+          id: number
+          user_id: string
+          user_name: string
+          user_avatar_url: string | null
+          tmdb_id: number
+          movie_title: string
+          rating: number
+          comment: string | null
+          created_at: string
+          updated_at: string | null
+        }
+        Insert: {
+          id?: number
+          user_id: string
+          user_name: string
+          user_avatar_url?: string | null
+          tmdb_id: number
+          movie_title: string
+          rating: number
+          comment?: string | null
+          created_at?: string
+          updated_at?: string | null
+        }
+        Update: {
+          id?: number
+          user_id?: string
+          user_name?: string
+          user_avatar_url?: string | null
+          tmdb_id?: number
+          movie_title?: string
+          rating?: number
+          comment?: string | null
+          created_at?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

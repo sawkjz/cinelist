@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -110,7 +111,8 @@ public class ListaService {
                     return new RuntimeException("Lista não encontrada");
                 });
         
-        listaRepository.delete(lista);
+        Long persistedId = Objects.requireNonNull(lista.getId(), "Lista sem ID persistido");
+        listaRepository.deleteById(persistedId);
         
         System.out.println("✅ [ListaService] Lista deletada com sucesso");
     }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -10,9 +10,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Trophy, Film, Star, Calendar, Upload, Edit2, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAuthContext } from "@/contexts/AuthContext";
+import { ReviewSupabaseService } from "@/services/ReviewSupabaseService";
 
 const Profile = () => {
   const navigate = useNavigate();
+  const { user } = useAuthContext();
   const [userEmail, setUserEmail] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
   const [userBio, setUserBio] = useState<string>("");
@@ -20,10 +23,29 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [reviewsCount, setReviewsCount] = useState<number | null>(null);
 
   useEffect(() => {
     loadUserProfile();
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setReviewsCount(null);
+      return;
+    }
+
+    const fetchReviewCount = async () => {
+      try {
+        const total = await ReviewSupabaseService.countByUser(user.id);
+        setReviewsCount(total);
+      } catch (error) {
+        console.error("Erro ao buscar contagem de avaliações:", error);
+      }
+    };
+
+    fetchReviewCount();
+  }, [user]);
 
   const loadUserProfile = async () => {
     try {
@@ -69,8 +91,9 @@ const Profile = () => {
 
       toast.success("Perfil atualizado com sucesso!");
       setIsEditing(false);
-    } catch (error: any) {
-      toast.error("Erro ao atualizar perfil: " + error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Erro ao atualizar perfil";
+      toast.error(`Erro ao atualizar perfil: ${message}`);
     }
   };
 
@@ -78,19 +101,42 @@ const Profile = () => {
     try {
       setUploading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        toast.error("É preciso estar autenticado para atualizar o avatar.");
+        return;
+      }
 
       const file = event.target.files?.[0];
       if (!file) return;
+      event.target.value = "";
+
+      const allowedExtensions = ["jpg", "jpeg", "png", "webp"];
+      const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp"];
+      const maxFileSize = 10 * 1024 * 1024; // 10MB
+
+      const fileExt = file.name.split(".").pop()?.toLowerCase();
+      if (!fileExt || !allowedExtensions.includes(fileExt) || !allowedMimeTypes.includes(file.type)) {
+        toast.error("Formato inválido. Use JPG, JPEG, PNG ou WEBP.");
+        return;
+      }
+
+      if (file.size > maxFileSize) {
+        toast.error("O arquivo deve ter no máximo 10MB.");
+        return;
+      }
 
       // Upload para o Storage do Supabase
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${user.id}-${Math.random()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+      const fileName = `${user.id}-${uniqueSuffix}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          contentType: file.type,
+          upsert: true,
+        });
 
       if (uploadError) throw uploadError;
 
@@ -111,8 +157,9 @@ const Profile = () => {
 
       setAvatarUrl(newAvatarUrl);
       toast.success("Foto atualizada com sucesso!");
-    } catch (error: any) {
-      toast.error("Erro ao fazer upload: " + error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Erro ao fazer upload";
+      toast.error(`Erro ao fazer upload: ${message}`);
     } finally {
       setUploading(false);
     }
@@ -130,10 +177,23 @@ const Profile = () => {
 
   const stats = [
     { icon: Film, label: "Filmes Assistidos", value: "47" },
-    { icon: Star, label: "Avaliações", value: "32" },
+    {
+      icon: Star,
+      label: "Avaliações",
+      value: reviewsCount !== null ? reviewsCount.toString() : "…",
+      onClick: () => navigate("/profile/reviews"),
+    },
     { icon: Calendar, label: "Dias Assistindo", value: "156" },
     { icon: Trophy, label: "Conquistas", value: "8" },
   ];
+
+  const handleStatKeyDown = (event: KeyboardEvent<HTMLDivElement>, action?: () => void) => {
+    if (!action) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      action();
+    }
+  };
 
   const getInitials = () => {
     if (userName) {
@@ -194,7 +254,7 @@ const Profile = () => {
               <input
                 id="avatar-upload"
                 type="file"
-                accept="image/*"
+                accept=".jpg,.jpeg,.png,.webp"
                 className="hidden"
                 onChange={handleUploadAvatar}
                 disabled={uploading}
@@ -271,8 +331,20 @@ const Profile = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {stats.map((stat, index) => {
             const Icon = stat.icon;
+            const isInteractive = Boolean(stat.onClick);
             return (
-              <Card key={index} className="p-6 bg-card border-border/50 text-center">
+              <Card
+                key={index}
+                className={`p-6 bg-card border-border/50 text-center ${
+                  isInteractive
+                    ? "cursor-pointer transition hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    : ""
+                }`}
+                onClick={stat.onClick}
+                role={isInteractive ? "button" : undefined}
+                tabIndex={isInteractive ? 0 : undefined}
+                onKeyDown={(event) => handleStatKeyDown(event, stat.onClick)}
+              >
                 <Icon className="h-8 w-8 text-accent mx-auto mb-2" />
                 <p className="text-2xl font-bold text-foreground mb-1">{stat.value}</p>
                 <p className="text-sm text-muted-foreground">{stat.label}</p>
