@@ -97,21 +97,45 @@ export class ReviewSupabaseService {
     const timestamp = new Date().toISOString();
     const avatarUrl = await resolveAvatarForUser(params.userAvatarUrl, params.userId);
 
-    const { data, error } = await supabase
+    const { data: existing } = await supabase
       .from("movie_reviews")
-      .upsert(
-        {
-          user_id: params.userId,
+      .select("*")
+      .eq("user_id", params.userId)
+      .eq("tmdb_id", params.tmdbId)
+      .single();
+
+    if (existing) {
+      const { data, error } = await supabase
+        .from("movie_reviews")
+        .update({
           user_name: params.userName,
           user_avatar_url: avatarUrl,
-          tmdb_id: params.tmdbId,
           movie_title: params.movieTitle,
           rating: params.rating,
           comment: params.comment?.trim() || null,
           updated_at: timestamp,
-        },
-        { onConflict: "user_id,tmdb_id" }
-      )
+        })
+        .eq("id", existing.id)
+        .select(REVIEW_SELECT)
+        .single();
+
+      if (error) throw error;
+      return mapReview(data as ReviewRowWithProfile);
+    }
+
+    const { data, error } = await supabase
+      .from("movie_reviews")
+      .insert({
+        user_id: params.userId,
+        user_name: params.userName,
+        user_avatar_url: avatarUrl,
+        tmdb_id: params.tmdbId,
+        movie_title: params.movieTitle,
+        rating: params.rating,
+        comment: params.comment?.trim() || null,
+        created_at: timestamp,
+        updated_at: timestamp,
+      })
       .select(REVIEW_SELECT)
       .single();
 
@@ -127,5 +151,26 @@ export class ReviewSupabaseService {
 
     if (error) throw error;
     return count ?? 0;
+  }
+
+  static async updateComment(reviewId: number, comment: string): Promise<MovieReview> {
+    const timestamp = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("movie_reviews")
+      .update({
+        comment: comment.trim() || null,
+        updated_at: timestamp,
+      })
+      .eq("id", reviewId)
+      .select(REVIEW_SELECT)
+      .single();
+
+    if (error) throw error;
+    return mapReview(data as ReviewRowWithProfile);
+  }
+
+  static async deleteReview(reviewId: number): Promise<void> {
+    const { error } = await supabase.from("movie_reviews").delete().eq("id", reviewId);
+    if (error) throw error;
   }
 }

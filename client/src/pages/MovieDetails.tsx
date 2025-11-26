@@ -1,6 +1,6 @@
 import { useEffect, useState, CSSProperties, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Star, ArrowLeft, Plus } from "lucide-react";
+import { Star, ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -62,9 +62,13 @@ const MovieDetails = () => {
   const [userComment, setUserComment] = useState("");
   const [hoveredStar, setHoveredStar] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [editingReviewId, setEditingReviewId] = useState<number | null>(null);
+  const [editingComment, setEditingComment] = useState("");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const { user, backendUser } = useAuthContext();
   const [starBursts, setStarBursts] = useState<StarBurst[]>([]);
   const normalizedMovieRating = movie ? toFiveStarScale(movie.vote_average) : 0;
+  const EDIT_LOG_KEY = "cinelist_review_edit_log";
 
   const fetchMovieDetails = useCallback(async () => {
     if (!id) return;
@@ -84,6 +88,8 @@ const MovieDetails = () => {
     try {
       const data = await prefetchMovieReviews(Number(id));
       setReviews(data);
+      setEditingReviewId(null);
+      setEditingComment("");
     } catch (error) {
       console.error("Erro ao buscar reviews no Supabase:", error);
       toast.error("Erro ao carregar reviews");
@@ -160,6 +166,12 @@ const MovieDetails = () => {
       return;
     }
 
+    const existingOwnReview = reviews.find((r) => r.userId === user.id);
+    if (existingOwnReview) {
+      toast.error("Você já comentou este filme. Edite ou apague o comentário existente.");
+      return;
+    }
+
     setSubmitting(true);
     try {
       await ReviewSupabaseService.upsertReview({
@@ -188,6 +200,81 @@ const MovieDetails = () => {
       toast.error("Erro ao adicionar review");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleStartEdit = (review: MovieReview) => {
+    setEditingReviewId(review.id);
+    setEditingComment(review.comment || "");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingReviewId(null);
+    setEditingComment("");
+  };
+
+  const getEditLog = (): Record<string, number> => {
+    try {
+      const raw = localStorage.getItem(EDIT_LOG_KEY);
+      if (!raw) return {};
+      return JSON.parse(raw);
+    } catch {
+      return {};
+    }
+  };
+
+  const recordEdit = (reviewId: number) => {
+    const log = getEditLog();
+    const current = log[reviewId] || 0;
+    log[reviewId] = current + 1;
+    localStorage.setItem(EDIT_LOG_KEY, JSON.stringify(log));
+  };
+
+  const canEditReview = (reviewId: number): { allowed: boolean; remaining: number } => {
+    const log = getEditLog();
+    const edits = log[reviewId] || 0;
+    const allowed = edits < 2;
+    return { allowed, remaining: Math.max(0, 2 - edits) };
+  };
+
+  const handleSaveEdit = async (reviewId: number) => {
+    if (!editingComment.trim()) {
+      toast.error("O comentário não pode ser vazio.");
+      return;
+    }
+
+    const { allowed, remaining } = canEditReview(reviewId);
+    if (!allowed) {
+      toast.error("Não foi possível salvar a edição agora. Tente novamente mais tarde.");
+      return;
+    }
+
+    try {
+      await ReviewSupabaseService.updateComment(reviewId, editingComment);
+      toast.success("Comentário atualizado!");
+      recordEdit(reviewId);
+      if (cacheKey) invalidateMovieReviews(cacheKey);
+      fetchReviews();
+    } catch (error) {
+      console.error("Erro ao editar review:", error);
+      toast.error("Não foi possível editar o comentário.");
+    }
+  };
+
+  const handleDeleteReview = async (reviewId: number) => {
+    const confirmDelete = window.confirm("Tem certeza que deseja apagar seu comentário?");
+    if (!confirmDelete) return;
+    setDeletingId(reviewId);
+    try {
+      await ReviewSupabaseService.deleteReview(reviewId);
+      toast.success("Review apagada.");
+      if (cacheKey) invalidateMovieReviews(cacheKey);
+      fetchReviews();
+    } catch (error) {
+      console.error("Erro ao apagar review:", error);
+      toast.error("Não foi possível apagar sua review.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -473,7 +560,18 @@ const formatReviewDateTime = (value?: string) => {
               </p>
               ) : (
               reviews.map((review) => (
-                <Card key={review.id} className="p-6 bg-gradient-card border-border/50">
+                <Card key={review.id} className="relative p-6 bg-gradient-card border-border/50">
+                  {user?.id === review.userId && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteReview(review.id)}
+                      disabled={deletingId === review.id}
+                      className="absolute right-3 top-5 text-muted-foreground hover:text-destructive transition-colors"
+                      aria-label="Apagar comentário"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                   <div className="space-y-4">
                     <button
                       type="button"
@@ -507,9 +605,48 @@ const formatReviewDateTime = (value?: string) => {
                         showValue={false}
                         className="flex-wrap"
                       />
-                    </div>
-                    {review.comment && (
-                      <p className="text-muted-foreground leading-relaxed">{review.comment}</p>
+                  </div>
+                    {user?.id === review.userId && editingReviewId === review.id ? (
+                      <div className="space-y-3">
+                        <Textarea
+                          value={editingComment}
+                          onChange={(e) => setEditingComment(e.target.value)}
+                          placeholder="Edite seu comentário..."
+                        />
+                        <div className="flex gap-2 flex-wrap">
+                          <Button
+                            size="sm"
+                            onClick={() => handleSaveEdit(review.id)}
+                            disabled={submitting}
+                          >
+                            Salvar edição
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleCancelEdit}
+                            disabled={submitting}
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : review.comment ? (
+                      <p className="text-muted-foreground leading-relaxed">
+                        {review.comment}
+                        {review.updatedAt && review.updatedAt !== review.createdAt && (
+                          <span className="ml-2 text-xs text-muted-foreground opacity-60">
+                            (editada)
+                          </span>
+                        )}
+                      </p>
+                    ) : null}
+                    {user?.id === review.userId && editingReviewId !== review.id && (
+                      <div className="flex gap-2 flex-wrap">
+                        <Button size="sm" variant="outline" onClick={() => handleStartEdit(review)}>
+                          Editar comentário
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </Card>
