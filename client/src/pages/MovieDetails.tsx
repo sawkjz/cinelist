@@ -553,9 +553,9 @@ const formatReviewDateTime = (value?: string) => {
           </Card>
 
           {/* Lista de Reviews */}
-          <div className={reviewListClasses}>
+          <div className={`${reviewListClasses} mt-4`}>
             {reviews.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">
+              <p className="text-muted-foreground text-center py-4 text-sm">
                 Ainda não há reviews para este filme. Seja o primeiro!
               </p>
               ) : (
