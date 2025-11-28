@@ -32,6 +32,7 @@ type Badge = {
 const Profile = () => {
   const navigate = useNavigate();
   const { user } = useAuthContext();
+  const CHAT_BADGE_STORAGE_KEY = "chatwidget_badge_0.1";
   const [userEmail, setUserEmail] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
   const [userBio, setUserBio] = useState<string>("");
@@ -49,6 +50,7 @@ const Profile = () => {
   const [isBadgeModalOpen, setIsBadgeModalOpen] = useState(false);
   const [claimText, setClaimText] = useState("");
   const [userIp, setUserIp] = useState<string | null>(null);
+  const [hasChatBadge, setHasChatBadge] = useState(false);
 
   useEffect(() => {
     loadUserProfile();
@@ -198,6 +200,8 @@ const Profile = () => {
           setUserName(profile.full_name || "");
           setUserBio(profile.bio || "");
           setAvatarUrl(profile.avatar_url || "");
+          const chatBadge = localStorage.getItem(`${CHAT_BADGE_STORAGE_KEY}:${user.id}`) === "earned";
+          setHasChatBadge(chatBadge);
         }
       }
     } catch (error) {
@@ -643,7 +647,15 @@ const Profile = () => {
                 <>
                   <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h1 className="text-3xl font-cinzel font-bold">{userName || "Sem nome"}</h1>
+                    <div className="flex items-center gap-2">
+                      <h1 className="text-3xl font-cinzel font-bold">{userName || "Sem nome"}</h1>
+                      {hasChatBadge && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-accent text-accent-foreground px-2 py-1 text-xs font-semibold">
+                          <Film className="h-3 w-3" />
+                          0.1
+                        </span>
+                      )}
+                    </div>
                     <p className="text-muted-foreground">{userEmail}</p>
                     {badges.length > 0 && (
                       <div className="mt-2 flex flex-wrap items-center gap-2">
