@@ -9,6 +9,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { ListaSupabaseService, LIST_STATUS } from "@/services/ListaSupabaseService";
 import type { Database } from "@/integrations/supabase/types";
 import { toFiveStarScale } from "@/utils/rating";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type ListaSupabase = Database['public']['Tables']['profile_movies_favlist']['Row'];
 
@@ -37,6 +47,8 @@ const statusOrder = [
 const MyListPage = () => {
   const [listas, setListas] = useState<ListaComFilmes[]>([]);
   const [loading, setLoading] = useState(true);
+  const [listaParaDeletar, setListaParaDeletar] = useState<{ id: number; nome: string } | null>(null);
+  const [deletando, setDeletando] = useState(false);
 
   useEffect(() => {
     console.log("📂 [MyListPage] Carregando página Minha Lista");
@@ -115,21 +127,22 @@ const MyListPage = () => {
     }
   };
 
-  const deletarLista = async (listaId: number, nome: string) => {
-    console.log(`🗑️ [MyListPage] Deletando lista "${nome}" (ID: ${listaId})`);
-
-    if (!confirm(`Tem certeza que deseja deletar a lista "${nome}"?`)) {
-      return;
-    }
-
+  const deletarLista = async () => {
+    if (!listaParaDeletar) return;
+    const { id, nome } = listaParaDeletar;
+    console.log(`🗑️ [MyListPage] Deletando lista "${nome}" (ID: ${id})`);
+    setDeletando(true);
     try {
-      await ListaSupabaseService.deletarLista(listaId);
+      await ListaSupabaseService.deletarLista(id);
       console.log("✅ [MyListPage] Lista deletada com sucesso");
       toast.success(`Lista "${nome}" deletada`);
-      carregarListas(); // Recarregar listas
+      await carregarListas(); // Recarregar listas
     } catch (error) {
       console.error("❌ [MyListPage] Erro ao deletar lista:", error);
       toast.error("Erro ao deletar lista");
+    } finally {
+      setDeletando(false);
+      setListaParaDeletar(null);
     }
   };
 
@@ -200,7 +213,7 @@ const MyListPage = () => {
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => deletarLista(lista.id, lista.list_name)}
+                            onClick={() => setListaParaDeletar({ id: lista.id, nome: lista.list_name })}
                           >
                             <Trash2 className="h-4 w-4 mr-1" />
                             Deletar Lista
@@ -250,6 +263,27 @@ const MyListPage = () => {
           </div>
         )}
       </main>
+
+      <AlertDialog open={!!listaParaDeletar} onOpenChange={(open) => !open && !deletando && setListaParaDeletar(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deletar lista</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja deletar a lista "{listaParaDeletar?.nome}"? Essa ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletando}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={deletarLista}
+              disabled={deletando}
+            >
+              {deletando ? "Deletando..." : "Confirmar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
