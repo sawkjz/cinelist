@@ -4,7 +4,6 @@ import { Github, Mail, Film, Star, Heart } from "lucide-react";
 const quickLinks = [
   { label: "Catálogo", to: "/all-movies" },
   { label: "Favoritos", to: "/my-list" },
-  { label: "Comunidade", to: "/profile/reviews" },
   { label: "Perfil", to: "/profile" },
 ];
 
@@ -14,9 +13,9 @@ const connectLinks = [
 ];
 
 const featureLinks = [
-  { label: "Descobrir filmes", icon: Film },
-  { label: "Reviews da galera", icon: Star },
-  { label: "Listas que importam", icon: Heart },
+  { label: "Calendário", icon: Film },
+  { label: "Reviews de amigos", icon: Star },
+  { label: "...", icon: Heart },
 ];
 
 const Footer = () => {
@@ -55,7 +54,7 @@ const Footer = () => {
           </div>
 
           <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-foreground">Destaques</h4>
+            <h4 className="text-sm font-semibold text-foreground">Em breve</h4>
             <div className="grid grid-cols-1 gap-2 text-sm">
               {featureLinks.map(({ label, icon: Icon }) => (
                 <div key={label} className="flex items-center gap-2 text-muted-foreground">
