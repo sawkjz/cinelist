@@ -111,7 +111,7 @@ const GenrePage = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <main className="container mx-auto px-4 pt-24 pb-12">
+      <main className="container mx-auto px-4 pt-24 pb-6">
         <Button
           variant="ghost"
           onClick={() => navigate(-1)}

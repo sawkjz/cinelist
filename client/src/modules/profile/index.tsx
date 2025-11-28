@@ -447,7 +447,7 @@ const Profile = () => {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
-        <main className="container mx-auto px-4 pt-24 pb-12">
+        <main className="container mx-auto px-4 pt-24 pb-6">
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mx-auto mb-4"></div>
@@ -603,7 +603,7 @@ const Profile = () => {
       </Dialog>
       <Navbar />
       
-      <main className="container mx-auto px-4 pt-24 pb-12">
+      <main className="container mx-auto px-4 pt-24 pb-6">
         <Card className="p-8 bg-gradient-card border-border/50 mb-8">
           <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
             <div className="relative">

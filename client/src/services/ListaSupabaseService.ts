@@ -6,6 +6,13 @@ type ListaInsert = Database['public']['Tables']['profile_movies_favlist']['Inser
 type ListaFilme = Database['public']['Tables']['profile_movies_favlist_movies']['Row'];
 type ListaFilmeInsert = Database['public']['Tables']['profile_movies_favlist_movies']['Insert'];
 
+export const LIST_STATUS = {
+  WATCHING: "ASSISTINDO",
+  FINISHED: "FINALIZADO",
+  PLANNING: "PLANEJANDO_ASSISTIR",
+  NEVER: "NUNCA_ASSISTIRIA",
+} as const;
+
 export class ListaSupabaseService {
   
   // Buscar todas as listas do usuário
@@ -28,25 +35,39 @@ export class ListaSupabaseService {
   }
   
   // Criar nova lista
-  static async criarLista(userId: string, nome: string): Promise<Lista> {
+  static async criarLista(userId: string, nome: string, status: ListaInsert["status"] = null): Promise<Lista> {
     console.log("➕ [SupabaseService] Criando lista:", nome);
-    
-    const { data, error } = await supabase
+
+    // Monta payload básico; status é opcional caso a coluna não exista no schema do usuário.
+    const basePayload: Partial<ListaInsert> = { user_id: userId, list_name: nome };
+    const payloadComStatus = status ? { ...basePayload, status } : basePayload;
+
+    // Tenta criar com status; se falhar por qualquer motivo, tenta de novo sem status.
+    const tentativa = await supabase
       .from('profile_movies_favlist')
-      .insert({
-        user_id: userId,
-        list_name: nome
-      })
+      .insert(payloadComStatus)
       .select()
       .single();
-    
-    if (error) {
-      console.error("❌ [SupabaseService] Erro ao criar lista:", error);
-      throw error;
+
+    if (!tentativa.error && tentativa.data) {
+      console.log("✅ [SupabaseService] Lista criada:", tentativa.data);
+      return tentativa.data as Lista;
     }
-    
-    console.log("✅ [SupabaseService] Lista criada:", data);
-    return data;
+
+    console.warn("⚠️ [SupabaseService] Falha na criação com status, tentando sem status.", tentativa.error);
+    const fallback = await supabase
+      .from('profile_movies_favlist')
+      .insert(basePayload)
+      .select()
+      .single();
+
+    if (fallback.error || !fallback.data) {
+      console.error("❌ [SupabaseService] Erro ao criar lista (fallback):", fallback.error);
+      throw fallback.error ?? new Error("Erro desconhecido ao criar lista");
+    }
+
+    console.log("✅ [SupabaseService] Lista criada (sem status):", fallback.data);
+    return fallback.data as Lista;
   }
   
   // Adicionar filme à lista

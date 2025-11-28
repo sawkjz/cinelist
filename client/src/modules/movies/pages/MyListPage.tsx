@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Plus, Trash2, Film } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { ListaSupabaseService } from "@/services/ListaSupabaseService";
+import { ListaSupabaseService, LIST_STATUS } from "@/services/ListaSupabaseService";
 import type { Database } from "@/integrations/supabase/types";
 import { toFiveStarScale } from "@/utils/rating";
 
@@ -25,6 +25,14 @@ interface ListaComFilmes extends ListaSupabase {
   movieIds: number[];
   filmes: FilmeDetalhes[];
 }
+
+const statusOrder = [
+  { key: LIST_STATUS.WATCHING, label: "Assistindo" },
+  { key: LIST_STATUS.FINISHED, label: "Finalizado" },
+  { key: LIST_STATUS.PLANNING, label: "Planejando assistir" },
+  { key: LIST_STATUS.NEVER, label: "Nunca mais assistiria" },
+  { key: "SEM_STATUS", label: "Sem status" },
+];
 
 const MyListPage = () => {
   const [listas, setListas] = useState<ListaComFilmes[]>([]);
@@ -129,7 +137,7 @@ const MyListPage = () => {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
-        <main className="container mx-auto px-4 pt-24 pb-12">
+        <main className="container mx-auto px-4 pt-24 pb-6">
           <div className="text-center py-12">
             <p className="text-muted-foreground">Carregando suas listas...</p>
           </div>
@@ -142,7 +150,7 @@ const MyListPage = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <main className="container mx-auto px-4 pt-24 pb-12">
+      <main className="container mx-auto px-4 pt-24 pb-6">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-4xl font-cinzel font-bold text-foreground">Minhas Listas</h1>
           <Button onClick={carregarListas} variant="outline">
@@ -160,63 +168,85 @@ const MyListPage = () => {
           </Card>
         ) : (
           <div className="space-y-12">
-            {listas.map((lista) => (
-              <div key={lista.id} className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-cinzel font-bold text-foreground flex items-center gap-2">
-                      {lista.list_name}
-                      <span className="text-sm font-normal text-muted-foreground">
-                        ({lista.filmes.length} {lista.filmes.length === 1 ? "filme" : "filmes"})
+            {statusOrder.map((statusItem) => {
+              const listasDoStatus = listas.filter(
+                (lista) => (lista.status || "SEM_STATUS") === statusItem.key
+              );
+              if (listasDoStatus.length === 0) return null;
+
+              return (
+                <section key={statusItem.key} className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                      {statusItem.label}
+                      <span className="text-sm text-muted-foreground">
+                        ({listasDoStatus.reduce((acc, l) => acc + l.filmes.length, 0)} filmes)
                       </span>
                     </h2>
                   </div>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => deletarLista(lista.id, lista.list_name)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Deletar Lista
-                  </Button>
-                </div>
 
-                {lista.filmes.length === 0 ? (
-                  <Card className="p-8 text-center">
-                    <p className="text-muted-foreground">
-                      Esta lista está vazia. Adicione filmes do dashboard!
-                    </p>
-                  </Card>
-                ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    {lista.filmes.map((filme) => (
-                      <div key={filme.id} className="relative group">
-                        <MovieCard
-                          id={filme.id}
-                          title={filme.title}
-                          year={filme.release_date?.split('-')[0] || ''}
-                          rating={toFiveStarScale(filme.vote_average)}
-                          posterUrl={
-                            filme.poster_path
-                              ? `https://image.tmdb.org/t/p/w500${filme.poster_path}`
-                              : "/placeholder.svg"
-                          }
-                          genre={filme.genres?.map(g => g.name).join(', ') || ''}
-                        />
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                          onClick={() => removerFilme(lista.id, filme.id, filme.title)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+                  <div className="space-y-8">
+                    {listasDoStatus.map((lista) => (
+                      <div key={lista.id} className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="text-lg font-bold flex items-center gap-2">
+                              {lista.list_name}
+                              <span className="text-sm font-normal text-muted-foreground">
+                                ({lista.filmes.length} {lista.filmes.length === 1 ? "filme" : "filmes"})
+                              </span>
+                            </h3>
+                          </div>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => deletarLista(lista.id, lista.list_name)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Deletar Lista
+                          </Button>
+                        </div>
+
+                        {lista.filmes.length === 0 ? (
+                          <Card className="p-8 text-center">
+                            <p className="text-muted-foreground">
+                              Esta lista está vazia. Adicione filmes do dashboard!
+                            </p>
+                          </Card>
+                        ) : (
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                            {lista.filmes.map((filme) => (
+                              <div key={filme.id} className="relative group">
+                                <MovieCard
+                                  id={filme.id}
+                                  title={filme.title}
+                                  year={filme.release_date?.split('-')[0] || ''}
+                                  rating={toFiveStarScale(filme.vote_average)}
+                                  posterUrl={
+                                    filme.poster_path
+                                      ? `https://image.tmdb.org/t/p/w500${filme.poster_path}`
+                                      : "/placeholder.svg"
+                                  }
+                                  genre={filme.genres?.map(g => g.name).join(', ') || ''}
+                                />
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                  onClick={() => removerFilme(lista.id, filme.id, filme.title)}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-            ))}
+                </section>
+              );
+            })}
           </div>
         )}
       </main>

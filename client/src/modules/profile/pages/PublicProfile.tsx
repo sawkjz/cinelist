@@ -82,7 +82,7 @@ const PublicProfilePage = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="container mx-auto px-4 pt-24 pb-12 space-y-6">
+      <main className="container mx-auto px-4 pt-24 pb-6 space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Button variant="outline" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4 mr-2" />

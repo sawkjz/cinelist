@@ -7,7 +7,7 @@ const Calendar = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       
-      <main className="container mx-auto px-4 pt-24 pb-12">
+      <main className="container mx-auto px-4 pt-24 pb-6">
         <h1 className="text-4xl font-cinzel font-bold mb-8 text-foreground">
           Calendário de Lançamentos
         </h1>

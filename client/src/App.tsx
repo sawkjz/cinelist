@@ -27,6 +27,8 @@ const queryClient = new QueryClient();
 const AppContent = () => {
   const location = useLocation();
   const isAuthPage = location.pathname === "/" || location.pathname.startsWith("/auth");
+  const showFullFooter = location.pathname.startsWith("/dashboard");
+  const showMiniFooter = !isAuthPage && !showFullFooter;
 
   return (
     <>
@@ -124,7 +126,15 @@ const AppContent = () => {
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
-      {!isAuthPage && <Footer />}
+      {showFullFooter ? (
+        <Footer />
+      ) : (
+        showMiniFooter && (
+          <div className="mt-2 mb-2 px-4 py-2 text-center text-xs text-muted-foreground">
+            © Copyright CineList. All Rights Reserved.
+          </div>
+        )
+      )}
       <ChatWidget />
     </>
   );

@@ -87,7 +87,6 @@ const Footer = () => {
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground/80">
           <span>© {new Date().getFullYear()} CineList</span>
-          <span>Feito com carinho e pipoca.</span>
         </div>
       </div>
     </footer>

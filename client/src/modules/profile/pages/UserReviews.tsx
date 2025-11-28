@@ -215,7 +215,7 @@ const UserReviewsPage = () => {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
-        <main className="container mx-auto px-4 pt-24 pb-12">
+        <main className="container mx-auto px-4 pt-24 pb-6">
           <Card className="p-8 bg-gradient-card border-border/50 text-center">
             <p className="text-lg text-muted-foreground">
               Entre em sua conta para visualizar suas avaliações.
@@ -232,7 +232,7 @@ const UserReviewsPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="container mx-auto px-4 pt-24 pb-24 space-y-6">
+      <main className="container mx-auto px-4 pt-24 pb-12 space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-sm text-muted-foreground uppercase tracking-wide">Perfil</p>

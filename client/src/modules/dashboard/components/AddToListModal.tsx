@@ -2,9 +2,15 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, List } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
-import { ListaSupabaseService } from "@/services/ListaSupabaseService";
+import { ListaSupabaseService, LIST_STATUS } from "@/services/ListaSupabaseService";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -28,14 +34,18 @@ interface AddToListModalProps {
 
 const AddToListModal = ({ isOpen, onClose, movie, usuarioId }: AddToListModalProps) => {
   const [listas, setListas] = useState<Lista[]>([]);
-  const [mostrarFormNova, setMostrarFormNova] = useState(false);
-  const [novaLista, setNovaLista] = useState({ nome: "" });
+  const [mostrarFormNova, setMostrarFormNova] = useState(true);
+  const [novaLista, setNovaLista] = useState<{ nome: string; status: Lista["status"] }>({
+    nome: "",
+    status: LIST_STATUS.WATCHING,
+  });
   const [loading, setLoading] = useState(false);
   const [adicionando, setAdicionando] = useState<number | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       console.log("📂 [AddToListModal] Modal aberto para o filme:", movie.title);
+      setMostrarFormNova(true);
       carregarListas();
     }
   }, [isOpen, movie.title]);
@@ -78,11 +88,11 @@ const AddToListModal = ({ isOpen, onClose, movie, usuarioId }: AddToListModalPro
         return;
       }
 
-      const listaCriada = await ListaSupabaseService.criarLista(user.id, novaLista.nome);
+      const listaCriada = await ListaSupabaseService.criarLista(user.id, novaLista.nome, novaLista.status);
       console.log("✅ [AddToListModal] Lista criada com sucesso:", listaCriada);
       
       setListas([listaCriada, ...listas]);
-      setNovaLista({ nome: "" });
+      setNovaLista({ nome: "", status: LIST_STATUS.WATCHING });
       setMostrarFormNova(false);
       toast.success("Lista criada com sucesso!");
       
@@ -117,45 +127,60 @@ const AddToListModal = ({ isOpen, onClose, movie, usuarioId }: AddToListModalPro
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <List className="h-5 w-5" />
-            Adicionar "{movie.title}" a uma lista
-          </DialogTitle>
+          <DialogTitle>Adicionar "{movie.title}" a uma lista</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Botão para criar nova lista */}
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => setMostrarFormNova(!mostrarFormNova)}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            {mostrarFormNova ? "Cancelar" : "Criar Nova Lista"}
-          </Button>
-
-          {/* Formulário de nova lista */}
-          {mostrarFormNova && (
-            <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
-              <Input
-                placeholder="Nome da lista"
-                value={novaLista.nome}
-                onChange={(e) => setNovaLista({ nome: e.target.value })}
+        {/* Formulário de nova lista */}
+        {mostrarFormNova && (
+          <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
+            <Input
+              placeholder="Nome da lista"
+              value={novaLista.nome}
+              onChange={(e) => setNovaLista({ ...novaLista, nome: e.target.value })}
               />
-              <Button onClick={criarNovaLista} disabled={loading} className="w-full">
-                {loading ? "Criando..." : "Criar Lista"}
-              </Button>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Tipo</label>
+                <Select
+                  value={novaLista.status || ""}
+                  onValueChange={(value) =>
+                    setNovaLista({ ...novaLista, status: value as Lista["status"] })
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={LIST_STATUS.WATCHING}>Assistindo</SelectItem>
+                    <SelectItem value={LIST_STATUS.FINISHED}>Finalizado</SelectItem>
+                    <SelectItem value={LIST_STATUS.PLANNING}>Planejando assistir</SelectItem>
+                    <SelectItem value={LIST_STATUS.NEVER}>Nunca mais assistiria</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setMostrarFormNova(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={criarNovaLista}
+                  disabled={loading}
+                  className="flex-1 bg-[#f9da5c] text-[#24071c] hover:bg-[#f9da5c]/90"
+                >
+                  {loading ? "Criando..." : "Confirmar"}
+                </Button>
+              </div>
             </div>
           )}
 
           {/* Lista de listas existentes */}
-          <div className="space-y-2 max-h-[300px] overflow-y-auto">
-            {listas.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                Você ainda não tem listas. Crie uma nova!
-              </p>
-            ) : (
-              listas.map((lista) => (
+          {listas.length > 0 && (
+            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+              {listas.map((lista) => (
                 <div
                   key={lista.id}
                   className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
@@ -174,9 +199,9 @@ const AddToListModal = ({ isOpen, onClose, movie, usuarioId }: AddToListModalPro
                     {adicionando === lista.id ? "Adicionando..." : "Adicionar"}
                   </Button>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

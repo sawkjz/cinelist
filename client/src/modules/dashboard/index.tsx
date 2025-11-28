@@ -127,7 +127,7 @@ const DashboardPage = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       
-      <main className="container mx-auto px-4 pt-24 pb-12">
+      <main className="container mx-auto px-4 pt-24 pb-6">
         <HeroSection />
         <NotificationsSection activities={recentActivity} />
         
