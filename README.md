@@ -1,47 +1,94 @@
-# CineList
+# Cinelist
 
-Aplicação full-stack para catalogar filmes, consumir dados do TMDB e gerenciar autenticação pelo Supabase. O repositório contém:
-- `server/`: API em Spring Boot (porta 8081, banco H2 em memória)
-- `client/`: Frontend em React + Vite (porta 8080)
-- `supabase/functions/updateMovies`: Edge Function para sincronizar filmes em alta
+Cinelist é um sistema para os amantes de filmes, oferecendo uma experiência completa e personalizada. Abaixo, você encontrará uma descrição detalhada das funcionalidades do sistema.
 
-## Pré-requisitos
-- Git
-- Java 17 ou superior + Maven 3.9.x (ou usar o Maven Wrapper incluso)
-- Node.js 18+ com npm
-- Supabase CLI (opcional, apenas se for publicar a Edge Function)
-- Conta no TMDB para gerar o token usado pelo backend e pela Edge Function
+---
 
-## Passo-a-passo após clonar
-1. Clone e acesse o projeto:
-   ```bash
-   git clone <URL-do-repo>
-   cd trabalho-crud-2-bi
-   ```
-2. Configure as variáveis necessárias:
-   - `VITE_SUPABASE_URL=`
-   - `VITE_SUPABASE_PUBLISHABLE_KEY=`
-3. Instale e execute o backend:
-   ```
-   cd server
-   mvn clean install
-   mvn spring-boot:run
-   ```
-4. Em outro terminal, instale e execute o frontend:
-   ```
-   cd client
-   npm install
-   npm run dev
-   ```
-5. (Opcional) Faça o deploy da Edge Function que sincroniza os filmes do TMDB com a tabela `movies` do Supabase:
-   ```bash
-   cd supabase/functions
-   supabase login
-   supabase link --project-ref <seu-project-ref>
-   supabase secrets set MOVIE_API_KEY=<tmdb_bearer_token>
-   supabase functions deploy updateMovies
-   ```
+## Funcionalidades
 
-## Scripts úteis
-- `./setup-mac-linux.sh` ou `setup-windows.bat`: instaladores automatizados das dependências e variáveis básicas (ajustar antes de rodar).
-- `./start-all.bat`: inicia backend e frontend juntos no Windows.
+### 1. **Login e Cadastro**
+- Sistema de autenticação seguro para novos usuários e usuários existentes.
+- Permite criar e gerenciar sua conta de forma prática.
+
+### 2. **Integração com API de Filmes**
+- Conexão com uma API de filmes para exibir:
+  - Foto do card do filme.
+  - Banner.
+  - Sinopse.
+  - Avaliação do filme.
+
+### 3. **Categorias de Filmes**
+- Navegue por categorias para encontrar filmes do seu interesse.
+
+### 4. **Listas Personalizadas**
+- Crie suas próprias listas com o nome que desejar.
+- Adicione filmes às suas listas e organize-os em categorias como:
+  - Assistindo.
+  - Vou assistir.
+  - Nunca mais assistiria.
+  - Planejo assistir.
+
+### 5. **Comentários e Reviews**
+- Comente e avalie filmes diretamente na plataforma.
+- Todas as suas reviews e comentários são salvos e podem ser editados:
+  - Na página de informações do filme.
+  - Na página que exibe suas avaliações.
+
+### 6. **Gamificação**
+- Desafios internos para engajar os usuários e tornar a experiência mais divertida.
+
+### 7. **Chat para Contato**
+- Sistema de chat integrado para comunicação entre usuários.
+
+### 8. **Upload de Fotos**
+- Permissão para upload de fotos no perfil ou em outras áreas do sistema.
+
+### 9. **Tags Exclusivas**
+- Tags especiais para os primeiros 10 usuários da plataforma.
+
+### 10. **Histórico de Avaliações**
+- Acompanhe todas as avaliações e comentários que você já fez.
+
+---
+
+## Estrutura do Projeto
+
+Adicione aqui uma descrição da estrutura do projeto, como as principais pastas e arquivos.
+
+---
+
+## Galeria
+
+Abaixo estão algumas capturas de tela que ilustram a interface e os principais fluxos de uso do Cinelist, tanto em modo escuro quanto em modo claro.
+
+<table>
+  <tr>
+    <td align="center">
+      <strong>Tela principal – modo dark</strong><br/>
+      <img src="docs/gallery/home-dark.png" alt="Tela principal do Cinelist em modo dark" width="300" />
+    </td>
+    <td align="center">
+      <strong>Tela principal – modo light</strong><br/>
+      <img src="docs/gallery/home-light.png" alt="Tela principal do Cinelist em modo light" width="300" />
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <strong>Tela de cálculo</strong><br/>
+      <img src="docs/gallery/calculate.png" alt="Tela de cálculo de métricas ou estatísticas de filmes" width="300" />
+    </td>
+    <td align="center">
+      <strong>Tela de redes sociais</strong><br/>
+      <img src="docs/gallery/social.png" alt="Tela com links ou integrações de redes sociais" width="300" />
+    </td>
+  </tr>
+</table>
+
+---
+
+## Tecnologias Utilizadas
+
+- **Frontend:** Descreva aqui as tecnologias usadas no frontend (ex: React, Vue, etc.).
+- **Backend:** Descreva aqui as tecnologias usadas no backend (ex: Node.js, Django, etc.).
+- **Banco de Dados:** Informe o banco de dados utilizado (ex: MySQL, MongoDB, etc.).
+- **Outras Ferramentas:** Liste outras ferramentas ou bibliotecas relevantes.
