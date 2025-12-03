@@ -64,22 +64,26 @@ Abaixo estão algumas capturas de tela que ilustram a interface e os principais 
 <table>
   <tr>
     <td align="center">
-      <strong>Tela principal – modo dark</strong><br/>
-      <img src="docs/gallery/home-dark.png" alt="Tela principal do Cinelist em modo dark" width="300" />
+      <strong>Tela Login - </strong><br/>
+      <img src="assets/login.png" alt="Tela principal do Cinelist em modo dark" width="300" />
     </td>
     <td align="center">
-      <strong>Tela principal – modo light</strong><br/>
-      <img src="docs/gallery/home-light.png" alt="Tela principal do Cinelist em modo light" width="300" />
+      <strong>Tela Cadastro</strong><br/>
+      <img src="assets/cadastro.png" alt="Tela principal do Cinelist em modo light" width="300" />
     </td>
   </tr>
   <tr>
     <td align="center">
-      <strong>Tela de cálculo</strong><br/>
-      <img src="docs/gallery/calculate.png" alt="Tela de cálculo de métricas ou estatísticas de filmes" width="300" />
+      <strong>Tela Dashboard</strong><br/>
+      <img src="assets/dashboard-view.gif" alt="Tela de cálculo de métricas ou estatísticas de filmes" width="300" />
     </td>
     <td align="center">
-      <strong>Tela de redes sociais</strong><br/>
-      <img src="docs/gallery/social.png" alt="Tela com links ou integrações de redes sociais" width="300" />
+      <strong>Tela Chat-Contato</strong><br/>
+      <img src="assets/chat-contato.png" alt="Tela com links ou integrações de redes sociais" width="300" />
+    </td>
+    <td align="center">
+      <strong>Tela Chat-Preview</strong><br/>
+      <img src="assets/chat-contato-view.gif" alt="Tela com links ou integrações de redes sociais" width="300" />
     </td>
   </tr>
 </table>
